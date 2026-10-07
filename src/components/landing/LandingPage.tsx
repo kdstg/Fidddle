@@ -1,4 +1,5 @@
 import React, { useRef, useState } from "react";
+import Image from "next/image";
 import { IconButton } from "@/components/ui/IconButton";
 import { Button } from "@/components/ui/Button";
 import { ShortcutBadge } from "@/components/ui/ShortcutBadge";
@@ -60,7 +61,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             onDrop={handleDrop}
             className="relative w-screen h-screen bg-[#202020] overflow-hidden flex flex-col justify-between p-6 sm:p-8 select-none"
         >
-            {/* Hidden File Input */}
+            {/* Hidden Native File Input */}
             <input
                 ref={fileInputRef}
                 type="file"
@@ -69,115 +70,126 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 onChange={handleFileChange}
             />
 
-            {/* Full-Viewport Drag Active Overlay */}
+            {/* Drag Over Active Overlay */}
             {isDragOver && (
-                <div className="absolute inset-4 z-50 rounded-[24px] border-2 border-dashed border-[#3C70F2] bg-[#202020]/90 backdrop-blur-md flex flex-col items-center justify-center gap-3 animate-in fade-in-0 duration-150">
-                    <div className="w-16 h-16 rounded-full bg-[#3C70F2]/10 border border-[#3C70F2] flex items-center justify-center text-[#3C70F2]">
-                        <span className="text-2xl font-bold">+</span>
-                    </div>
+                <div className="absolute inset-4 z-50 rounded-[24px] border-2 border-dashed border-[#3C70F2] bg-[#202020]/90 backdrop-blur-md flex flex-col items-center justify-center gap-3">
                     <p className="text-lg font-sans font-medium text-white">
                         Drop PDF anywhere to start signing
                     </p>
                 </div>
             )}
 
-            {/* Top Navigation Bar */}
+            {/* Top Header Navigation Bar */}
             <header className="w-full flex items-center justify-between z-10">
-                {/* Left Action Cluster */}
                 <div className="flex items-center gap-2.5">
                     <IconButton
                         size="md"
                         icon={<GoogleDriveIcon size={18} className="text-white/80" />}
                         onClick={() => fileInputRef.current?.click()}
-                        title="Import from Google Drive"
                     />
                     <IconButton
                         size="md"
                         icon={<DropboxIcon size={18} className="text-white/80" />}
                         onClick={() => fileInputRef.current?.click()}
-                        title="Import from Dropbox"
                     />
                     <IconButton
                         size="md"
                         icon={<Link01Icon size={18} className="text-white/80" />}
                         onClick={onImportUrl || (() => fileInputRef.current?.click())}
-                        title="Import from Web URL"
                     />
                 </div>
 
-                {/* Right Action: Notifications */}
                 <IconButton
                     size="md"
                     icon={<Notification01Icon size={18} className="text-white/80" />}
-                    title="Notifications"
                 />
             </header>
 
             {/* Center Hero Section */}
-            <main className="relative z-10 flex flex-col items-center justify-center text-center -mt-8 gap-7">
-                {/* Brand Logo & Tagline */}
-                <div className="flex flex-col items-center gap-2">
-                    <h1 className="text-6xl sm:text-7xl font-brand font-normal text-white tracking-tight">
-                        fidddle
-                    </h1>
-                    <p className="text-base sm:text-lg font-brand italic text-white/90 tracking-wide">
+            <main className="relative z-10 flex flex-col items-center justify-center text-center -mt-4 gap-6">
+                <div className="flex flex-col items-center gap-3">
+                    {/* Main Connected Script Logo SVG */}
+                    <div className="relative w-[220px] h-[70px]">
+                        <Image
+                            src="/logo.svg"
+                            alt="fidddle"
+                            fill
+                            className="object-contain"
+                            priority
+                        />
+                    </div>
+
+                    {/* Subtext rendered in Alkaline Test Regular */}
+                    <p className="font-brand text-base sm:text-lg italic text-white/90 tracking-wide">
                         Send, sign, and seal agreements in seconds. Simple and Secure
                     </p>
                 </div>
 
-                {/* Action CTAs */}
+                {/* CTAs with Exact Figma Dimensions & 24px Geist Medium Typography */}
                 <div className="flex flex-col items-center gap-3">
                     <div className="flex items-center gap-3">
-                        {/* White Upload Button with #121212 Elements */}
+                        {/* Upload Doc CTA (243px x 64px) */}
                         <button
                             onClick={() => fileInputRef.current?.click()}
                             className="
-                inline-flex items-center gap-2.5
-                px-6 py-3 rounded-full
-                bg-white text-[#121212]
-                font-sans text-sm font-medium
-                hover:bg-white/90 active:scale-[0.98]
-                transition-all duration-150 shadow-lg shadow-[#121212]/40
-              "
+    w-[243px] h-[64px]
+    inline-flex items-center justify-center gap-3
+    rounded-full bg-white text-[#121212]
+    font-sans font-medium text-[24px] tracking-tight
+    hover:bg-white/90 active:scale-[0.98]
+    transition-all duration-150 shadow-lg shadow-[#121212]/30
+  "
                         >
                             <span>Upload Doc</span>
-                            <ShortcutBadge
-                                label="⌘ O"
-                                className="bg-[#121212]/10 border-[#121212]/20 text-[#121212]/80 font-semibold"
+                            <Image
+                                src="/shortcut-cmd-o.svg"
+                                alt="⌘O"
+                                width={32}
+                                height={21}
+                                className="shrink-0"
                             />
                         </button>
 
-                        {/* Dark Glass Learn More Button */}
-                        <Button
-                            variant="glass"
-                            size="md"
+                        {/* Learn More CTA (191px x 64px) */}
+                        <button
                             onClick={onLearnMore}
-                            className="px-6 py-3 text-sm font-medium"
+                            className="
+        w-[191px] h-[64px]
+        inline-flex items-center justify-center
+        rounded-full bg-[#1D1D1D]/90 text-white
+        border-[0.5px] border-[#373737]
+        font-sans font-medium text-[24px] tracking-tight
+        hover:bg-[#252525] active:scale-[0.98]
+        transition-all duration-150
+      "
                         >
                             Learn More
-                        </Button>
+                        </button>
                     </div>
 
-                    {/* Drag & Drop Hint */}
                     <p className="text-xs font-sans text-white/50 tracking-tight">
                         Drag & drop your PDF anywhere
                     </p>
                 </div>
             </main>
 
-            {/* Footer Info */}
+            {/* Footer Meta */}
             <footer className="w-full z-10 flex items-center justify-between">
                 <p className="text-xs font-sans text-white/40 tracking-tight">
                     Supports .pdf • 25MB max • End-to-end encrypted
                 </p>
             </footer>
 
-            {/* SVG Watermark Target Container */}
-            <div className="absolute inset-x-0 -bottom-10 pointer-events-none select-none flex justify-center overflow-hidden">
-                {/* Replace this span with your <FidddleWatermarkSVG /> once exported */}
-                <span className="font-brand text-[22vw] leading-none text-white/[0.03] tracking-tighter whitespace-nowrap">
-                    fidddle
-                </span>
+            {/* Large Bottom Watermark SVG */}
+            <div className="absolute inset-x-0 -bottom-16 pointer-events-none select-none flex justify-center opacity-30">
+                <div className="relative w-[90vw] h-[350px]">
+                    <Image
+                        src="/watermark.svg"
+                        alt=""
+                        fill
+                        className="object-contain object-bottom"
+                    />
+                </div>
             </div>
         </div>
     );
