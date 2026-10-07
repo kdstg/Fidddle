@@ -16,3 +16,19 @@ body {
   font-family: var(--font-sans);
   overflow: hidden;
 }
+
+/* Figma Glass Effect (-45deg Specular Refraction Highlight) */
+.glass-button {
+  background-color: rgba(255, 255, 255, 0.10);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 0.5px solid rgba(255, 255, 255, 0.18);
+  box-shadow: inset 0px 1px 1px 0px rgba(255, 255, 255, 0.35),
+    inset 0px -1px 1px 0px rgba(0, 0, 0, 0.15);
+  transition: all 0.15s ease-in-out;
+}
+
+.glass-button:hover {
+  background-color: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.25);
+}
