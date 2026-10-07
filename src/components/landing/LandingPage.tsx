@@ -1,12 +1,7 @@
 import React, { useRef, useState } from "react";
 import Image from "next/image";
 import { IconButton } from "@/components/ui/IconButton";
-import {
-    Notification01Icon,
-    Link01Icon,
-    GoogleDriveIcon,
-    DropboxIcon,
-} from "hugeicons-react";
+import { Notification01Icon } from "hugeicons-react";
 
 interface LandingPageProps {
     onFileSelect: (file: File) => void;
@@ -59,7 +54,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             onDrop={handleDrop}
             className="relative w-screen h-screen bg-[#202020] overflow-hidden flex flex-col justify-between p-6 sm:p-8 select-none"
         >
-            {/* Hidden Native File Input */}
             <input
                 ref={fileInputRef}
                 type="file"
@@ -68,20 +62,12 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 onChange={handleFileChange}
             />
 
-            {/* Full-Viewport Drag Over Overlay */}
-            {isDragOver && (
-                <div className="absolute inset-4 z-50 rounded-[24px] border-2 border-dashed border-[#3C70F2] bg-[#202020]/90 backdrop-blur-md flex flex-col items-center justify-center gap-3">
-                    <p className="text-lg font-sans font-medium text-white">
-                        Drop PDF anywhere to start signing
-                    </p>
-                </div>
-            )}
-
             {/* Top Header Navigation */}
             <header className="w-full flex items-center justify-between z-10">
                 <div className="flex items-center gap-3">
                     <IconButton
                         size="lg"
+                        variant="glass"
                         icon={
                             <Image
                                 src="/icon-gdrive.svg"
@@ -94,6 +80,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                     />
                     <IconButton
                         size="lg"
+                        variant="glass"
                         icon={
                             <Image
                                 src="/icon-dropbox.svg"
@@ -106,6 +93,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                     />
                     <IconButton
                         size="lg"
+                        variant="glass"
                         icon={
                             <Image
                                 src="/icon-link.svg"
@@ -118,19 +106,17 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                     />
                 </div>
 
+                {/* Bell Button (Solid Surface) */}
                 <IconButton
                     size="lg"
-                    icon={
-                        /* Uses Hugeicons Bell for now, or replace with /icon-bell.svg if you export one */
-                        <Notification01Icon size={28} className="text-white/80" />
-                    }
+                    variant="solid"
+                    icon={<Notification01Icon size={28} className="text-white" />}
                 />
             </header>
 
             {/* Center Hero Section */}
             <main className="relative z-10 flex flex-col items-center justify-center text-center -mt-4 gap-6">
                 <div className="flex flex-col items-center gap-3">
-                    {/* Script Logo SVG */}
                     <div className="relative w-[220px] h-[70px]">
                         <Image
                             src="/logo.svg"
@@ -141,7 +127,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                         />
                     </div>
 
-                    {/* Subtext: Alkaline Test Regular */}
                     <p className="font-brand text-base sm:text-lg italic text-white/90 tracking-wide">
                         Send, sign, and seal agreements in seconds. Simple and Secure
                     </p>
@@ -150,7 +135,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 {/* Action CTAs */}
                 <div className="flex flex-col items-center gap-4">
                     <div className="flex items-center gap-3">
-                        {/* Upload Doc CTA (243px x 64px, Geist Medium 24px) */}
+                        {/* Upload Doc CTA */}
                         <button
                             onClick={() => fileInputRef.current?.click()}
                             className="
@@ -172,24 +157,22 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                             />
                         </button>
 
-                        {/* Learn More CTA (191px x 64px, Geist Medium 24px) */}
+                        {/* Glassmorphic Learn More CTA */}
                         <button
                             onClick={onLearnMore}
                             className="
+                glass-button
                 w-[191px] h-[64px]
                 inline-flex items-center justify-center
-                rounded-full bg-[#1D1D1D]/90 text-white
-                border-[0.5px] border-[#373737]
+                rounded-full text-white
                 font-sans font-medium text-[24px] tracking-tight
-                hover:bg-[#252525] active:scale-[0.98]
-                transition-all duration-150
+                active:scale-[0.98]
               "
                         >
                             Learn More
                         </button>
                     </div>
 
-                    {/* Drag Hint Subtext: Geist Light 20px */}
                     <p className="font-sans font-light text-[20px] text-white/60 tracking-tight mt-1">
                         Drag & drop your PDF anywhere
                     </p>
@@ -203,7 +186,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 </p>
             </footer>
 
-            {/* Precise Watermark SVG (1552px x 768px anchored at bottom center) */}
+            {/* Background Watermark */}
             <div className="absolute left-1/2 -translate-x-1/2 -bottom-[140px] pointer-events-none select-none z-0">
                 <div className="relative w-[1552px] h-[768px]">
                     <Image
