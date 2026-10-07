@@ -115,7 +115,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
             </header>
 
             {/* Center Hero Section */}
-            <main className="relative z-10 flex flex-col items-center justify-center text-center -mt-4 gap-6">
+            <main className="relative z-10 flex flex-col items-center justify-center text-center -mt-12 -translate-y-2 gap-6">
                 <div className="flex flex-col items-center gap-3">
                     <div className="relative w-[220px] h-[70px]">
                         <Image
@@ -139,13 +139,13 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                         <button
                             onClick={() => fileInputRef.current?.click()}
                             className="
-                w-[243px] h-[64px]
-                inline-flex items-center justify-center gap-3
-                rounded-full bg-white text-[#121212]
-                font-sans font-medium text-[24px] tracking-tight
-                hover:bg-white/90 active:scale-[0.98]
-                transition-all duration-150 shadow-lg shadow-[#121212]/30
-              "
+          w-[243px] h-[64px]
+          inline-flex items-center justify-center gap-3
+          rounded-full bg-white text-[#121212]
+          font-sans font-medium text-[24px] tracking-tight
+          hover:bg-white/90 active:scale-[0.98]
+          transition-all duration-150 shadow-lg shadow-[#121212]/30
+        "
                         >
                             <span>Upload Doc</span>
                             <Image
@@ -161,13 +161,13 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                         <button
                             onClick={onLearnMore}
                             className="
-                glass-button
-                w-[191px] h-[64px]
-                inline-flex items-center justify-center
-                rounded-full text-white
-                font-sans font-medium text-[24px] tracking-tight
-                active:scale-[0.98]
-              "
+          glass-button
+          w-[191px] h-[64px]
+          inline-flex items-center justify-center
+          rounded-full text-white
+          font-sans font-medium text-[24px] tracking-tight
+          active:scale-[0.98]
+        "
                         >
                             Learn More
                         </button>
