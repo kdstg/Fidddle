@@ -1,4 +1,5 @@
 import React from "react";
+import Image from "next/image";
 
 interface ConfirmCheckButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
     onClick?: () => void;
@@ -30,18 +31,13 @@ export const ConfirmCheckButton: React.FC<ConfirmCheckButtonProps> = ({
             }}
             {...props}
         >
-            <svg
-                width="24"
-                height="24"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="white"
-                strokeWidth="3"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-            >
-                <polyline points="20 6 9 17 4 12" />
-            </svg>
+            <Image
+                src="/icon-tick.svg"
+                alt="Confirm"
+                width={24}
+                height={24}
+                className="shrink-0"
+            />
         </button>
     );
 };
