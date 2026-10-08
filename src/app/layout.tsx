@@ -47,7 +47,7 @@ const alkalineTest = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "fidddle — Zero-Trail E-Signatures",
+  title: "Fidddle — Zero-Trail E-Signatures",
   description: "Send, sign, and seal agreements in seconds. Simple and Secure",
 };
 
