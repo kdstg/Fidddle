@@ -2,14 +2,10 @@
 
 import React, { useState } from "react";
 import { LandingPage } from "@/components/landing/LandingPage";
-import { RecipientWorkspace } from "@/components/editor/RecipientWorkspace";
+import { SenderWorkspace } from "@/components/editor/SenderWorkspace";
 
 export default function Home() {
   const [file, setFile] = useState<File | null>(null);
-
-  const handleClose = () => {
-    setFile(null);
-  };
 
   return (
     <main className="relative w-screen h-screen overflow-hidden bg-[#202020]">
@@ -19,10 +15,9 @@ export default function Home() {
       />
 
       {file && (
-        <RecipientWorkspace
+        <SenderWorkspace
           documentName={file.name}
-          onClose={handleClose}
-          onConfirm={handleClose}
+          onClose={() => setFile(null)}
         />
       )}
     </main>
