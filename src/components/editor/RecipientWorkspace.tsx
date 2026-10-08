@@ -28,6 +28,7 @@ export const RecipientWorkspace: React.FC<RecipientWorkspaceProps> = ({
 }) => {
     const [fields, setFields] = useState<SignatureField[]>(initialFields);
     const [currentPage, setCurrentPage] = useState(1);
+    const [totalPages, setTotalPages] = useState(1);
     const [zoomLevel, setZoomLevel] = useState(100);
 
     /* Signing State Management */
@@ -111,9 +112,11 @@ export const RecipientWorkspace: React.FC<RecipientWorkspaceProps> = ({
                 onClick={(e) => e.stopPropagation()}
                 className="relative w-[1214.4px] h-[703px] bg-[#202020] border border-[#373737] rounded-[24px] flex overflow-hidden shadow-2xl cursor-default"
             >
-                {/* Left Thumbnail Sidebar */}
+                {/* Dynamic Thumbnail Sidebar with File Preview */}
                 <PageThumbnailSidebar
+                    file={file}
                     currentPage={currentPage}
+                    totalPages={totalPages}
                     onSelectPage={setCurrentPage}
                 />
 
@@ -184,6 +187,7 @@ export const RecipientWorkspace: React.FC<RecipientWorkspaceProps> = ({
                                 setIsSigning(true);
                             }}
                             onSignFieldClick={(fieldId) => handleSignActiveField(fieldId)}
+                            onTotalPagesChange={(pages) => setTotalPages(pages)}
                         />
                     </main>
 

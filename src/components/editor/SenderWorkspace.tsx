@@ -106,8 +106,9 @@ export const SenderWorkspace: React.FC<SenderWorkspaceProps> = ({
                 onClick={(e) => e.stopPropagation()}
                 className="relative w-[1214.4px] h-[703px] bg-[#202020] border border-[#373737] rounded-[24px] flex overflow-hidden shadow-2xl cursor-default"
             >
-                {/* Dynamic Thumbnail Sidebar */}
+                {/* Dynamic Thumbnail Sidebar with File Preview */}
                 <PageThumbnailSidebar
+                    file={file}
                     currentPage={currentPage}
                     totalPages={totalPages}
                     onSelectPage={setCurrentPage}

@@ -115,20 +115,23 @@ export const DocumentCanvas: React.FC<DocumentCanvasProps> = ({
     useEffect(() => {
         if (!pdfDoc || !pdfCanvasRef.current) return;
 
-        let isRenderCancelled = false;
+        let renderTask: any = null;
+        let isCancelled = false;
 
         const renderPage = async () => {
             try {
                 const pageNumber = Math.min(Math.max(1, currentPage), pdfDoc.numPages);
                 const page = await pdfDoc.getPage(pageNumber);
-                if (isRenderCancelled) return;
+                if (isCancelled) return;
 
-                const viewport = page.getViewport({ scale: 1.5 });
                 const canvas = pdfCanvasRef.current;
                 if (!canvas) return;
 
                 const context = canvas.getContext("2d");
                 if (!context) return;
+
+                // Force normalized 0-degree rotation so inverted PDFs render right side up
+                const viewport = page.getViewport({ scale: 1.5, rotation: 0 });
 
                 canvas.height = viewport.height;
                 canvas.width = viewport.width;
@@ -138,16 +141,24 @@ export const DocumentCanvas: React.FC<DocumentCanvasProps> = ({
                     viewport: viewport,
                 };
 
-                await (page.render(renderContext as any) as any).promise;
-            } catch (err) {
-                console.error("Render page error:", err);
+                // Store active render task reference
+                renderTask = page.render(renderContext as any);
+                await renderTask.promise;
+            } catch (err: any) {
+                // Ignore explicit task cancellation errors during page switching
+                if (err?.name !== "RenderingCancelledException") {
+                    console.error("Render page error:", err);
+                }
             }
         };
 
         renderPage();
 
         return () => {
-            isRenderCancelled = true;
+            isCancelled = true;
+            if (renderTask) {
+                renderTask.cancel();
+            }
         };
     }, [pdfDoc, currentPage]);
 
