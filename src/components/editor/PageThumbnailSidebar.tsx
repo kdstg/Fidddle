@@ -1,54 +1,61 @@
+/* src/components/editor/PageThumbnailSidebar.tsx */
 import React from "react";
 
 interface PageThumbnailSidebarProps {
-    totalPages?: number;
     currentPage: number;
+    totalPages?: number;
     onSelectPage: (page: number) => void;
 }
 
 export const PageThumbnailSidebar: React.FC<PageThumbnailSidebarProps> = ({
-    totalPages = 2,
     currentPage,
+    totalPages = 1,
     onSelectPage,
 }) => {
-    return (
-        <aside className="w-[242.4px] h-full bg-[#1D1D1D] border-r border-[#373737] flex flex-col p-6 shrink-0 select-none">
-            <h2 className="font-sans font-normal text-[20px] text-white mb-6">Pages</h2>
+    const pages = Array.from({ length: totalPages }, (_, i) => i + 1);
 
-            <div className="flex flex-col gap-6 items-center overflow-y-auto">
-                {Array.from({ length: totalPages }, (_, idx) => {
-                    const pageNum = idx + 1;
-                    const isActive = currentPage === pageNum;
+    return (
+        <aside className="w-[180px] h-full bg-[#1A1A1A] border-r border-[#373737] p-4 flex flex-col gap-4 overflow-y-auto custom-scrollbar">
+            <h2 className="font-sans font-medium text-sm text-white/70 uppercase tracking-wider mb-2">
+                Pages ({totalPages})
+            </h2>
+
+            <div className="flex flex-col gap-3">
+                {pages.map((page) => {
+                    const isActive = page === currentPage;
 
                     return (
-                        <div
-                            key={pageNum}
-                            onClick={() => onSelectPage(pageNum)}
-                            className="flex flex-col items-center gap-2 cursor-pointer group"
+                        <button
+                            key={page}
+                            onClick={() => onSelectPage(page)}
+                            className={`
+                group relative flex flex-col items-center gap-1.5 p-2 rounded-[12px] transition-all duration-150 cursor-pointer
+                ${isActive
+                                    ? "bg-[#3C70F2]/10 ring-2 ring-[#3C70F2]"
+                                    : "hover:bg-white/5 opacity-70 hover:opacity-100"
+                                }
+              `}
                         >
-                            <div
-                                className={`
-                  w-[80px] h-[107px] bg-[#2A2A2A] rounded-[4px] overflow-hidden
-                  transition-all duration-150 flex items-center justify-center text-xs text-white/40
-                  ${isActive
-                                        ? "border-[4px] border-[#3A8CFF] shadow-md shadow-[#3A8CFF]/20"
-                                        : "border border-white/10 group-hover:border-white/30"
-                                    }
-                `}
-                            >
-                                {/* PDF Page Thumbnail Placeholder */}
-                                <div className="w-full h-full bg-white p-1.5 flex flex-col gap-1">
-                                    <div className="w-2/3 h-1 bg-black/30 rounded-xs" />
-                                    <div className="w-full h-1 bg-black/15 rounded-xs" />
-                                    <div className="w-4/5 h-1 bg-black/15 rounded-xs" />
-                                    <div className="w-full h-10 bg-black/5 rounded-xs mt-1" />
+                            {/* Paper Thumbnail Box */}
+                            <div className="w-[80px] h-[113px] bg-white rounded-[2px] shadow-md flex flex-col justify-between p-2 overflow-hidden border border-black/10">
+                                <div className="space-y-1">
+                                    <div className="w-1/2 h-1 bg-black/15 rounded" />
+                                    <div className="w-full h-1 bg-black/10 rounded" />
+                                    <div className="w-full h-1 bg-black/10 rounded" />
+                                    <div className="w-3/4 h-1 bg-black/10 rounded" />
+                                </div>
+                                <div className="w-full text-center text-[7px] text-black/20 font-sans border-t border-black/5 pt-1">
+                                    {page}
                                 </div>
                             </div>
 
-                            <span className="font-sans font-normal text-[20px] text-white/80">
-                                {pageNum}
+                            <span
+                                className={`font-sans text-xs ${isActive ? "text-[#3C70F2] font-semibold" : "text-white/60"
+                                    }`}
+                            >
+                                {page}
                             </span>
-                        </div>
+                        </button>
                     );
                 })}
             </div>

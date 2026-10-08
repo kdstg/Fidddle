@@ -29,6 +29,7 @@ export const SenderWorkspace: React.FC<SenderWorkspaceProps> = ({
     onClose,
 }) => {
     const [currentPage, setCurrentPage] = useState(1);
+    const [totalPages, setTotalPages] = useState(1);
     const [zoomLevel, setZoomLevel] = useState(100);
     const [fields, setFields] = useState<SignatureField[]>(initialFields);
     const [activeFieldIndex, setActiveFieldIndex] = useState<number | null>(null);
@@ -55,16 +56,26 @@ export const SenderWorkspace: React.FC<SenderWorkspaceProps> = ({
 
     const handlePrevBlock = () => {
         if (fields.length === 0) return;
-        setActiveFieldIndex((prev) =>
-            prev === null || prev <= 0 ? fields.length - 1 : prev - 1
-        );
+        const nextIdx =
+            activeFieldIndex === null || activeFieldIndex <= 0
+                ? fields.length - 1
+                : activeFieldIndex - 1;
+        setActiveFieldIndex(nextIdx);
+        if (fields[nextIdx]) {
+            setCurrentPage(fields[nextIdx].page);
+        }
     };
 
     const handleNextBlock = () => {
         if (fields.length === 0) return;
-        setActiveFieldIndex((prev) =>
-            prev === null || prev >= fields.length - 1 ? 0 : prev + 1
-        );
+        const nextIdx =
+            activeFieldIndex === null || activeFieldIndex >= fields.length - 1
+                ? 0
+                : activeFieldIndex + 1;
+        setActiveFieldIndex(nextIdx);
+        if (fields[nextIdx]) {
+            setCurrentPage(fields[nextIdx].page);
+        }
     };
 
     /* Sync canvas page with selected block */
@@ -95,9 +106,10 @@ export const SenderWorkspace: React.FC<SenderWorkspaceProps> = ({
                 onClick={(e) => e.stopPropagation()}
                 className="relative w-[1214.4px] h-[703px] bg-[#202020] border border-[#373737] rounded-[24px] flex overflow-hidden shadow-2xl cursor-default"
             >
-                {/* Left Thumbnail Sidebar */}
+                {/* Dynamic Thumbnail Sidebar */}
                 <PageThumbnailSidebar
                     currentPage={currentPage}
+                    totalPages={totalPages}
                     onSelectPage={setCurrentPage}
                 />
 
@@ -194,6 +206,7 @@ export const SenderWorkspace: React.FC<SenderWorkspaceProps> = ({
                             activeFieldIndex={activeFieldIndex}
                             onFieldSelect={handleSelectField}
                             onFieldsChange={(updated) => setFields(updated)}
+                            onTotalPagesChange={(pages) => setTotalPages(pages)}
                         />
                     </main>
 

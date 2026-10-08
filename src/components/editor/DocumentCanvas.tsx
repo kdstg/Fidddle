@@ -2,9 +2,6 @@ import React, { useRef, useState, useEffect } from "react";
 import Image from "next/image";
 import * as pdfjs from "pdfjs-dist";
 
-// Configure worker for PDF rendering
-pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.js`;
-
 export interface SignatureField {
     id: string;
     page: number;
@@ -49,9 +46,15 @@ export const DocumentCanvas: React.FC<DocumentCanvasProps> = ({
     const [isLoading, setIsLoading] = useState(false);
 
     const dragOffsetRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
-    const currentPageFields = fields.filter((f) => f.page === currentPage);
 
-    /* ================= FILE LOADING LOGIC ================= */
+    /* ================= LOCAL PDF WORKER SETUP ================= */
+    useEffect(() => {
+        if (typeof window !== "undefined") {
+            pdfjs.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
+        }
+    }, []);
+
+    /* ================= LOAD FILE (PDF vs Image) ================= */
     useEffect(() => {
         if (!file) {
             setImageUrl(null);
@@ -81,7 +84,7 @@ export const DocumentCanvas: React.FC<DocumentCanvasProps> = ({
             reader.onload = async (e) => {
                 const typedArray = new Uint8Array(e.target?.result as ArrayBuffer);
                 try {
-                    const loadedPdf = await pdfjs.getDocument(typedArray).promise;
+                    const loadedPdf = await pdfjs.getDocument({ data: typedArray }).promise;
                     setPdfDoc(loadedPdf);
                     setImageUrl(null);
                     if (onTotalPagesChange) onTotalPagesChange(loadedPdf.numPages);
@@ -130,10 +133,12 @@ export const DocumentCanvas: React.FC<DocumentCanvasProps> = ({
                 canvas.height = viewport.height;
                 canvas.width = viewport.width;
 
-                await page.render({
+                const renderContext = {
                     canvasContext: context,
-                    viewport,
-                }).promise;
+                    viewport: viewport,
+                };
+
+                await (page.render(renderContext as any) as any).promise;
             } catch (err) {
                 console.error("Render page error:", err);
             }
@@ -197,18 +202,18 @@ export const DocumentCanvas: React.FC<DocumentCanvasProps> = ({
         setDraggingId(null);
     };
 
+    const currentPageFields = fields.filter((f) => f.page === currentPage);
+
     return (
         <div className="relative w-full h-full flex items-center justify-center overflow-auto p-8 select-none [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar]:h-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-[#373737] [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-[#505050]">
             <div
                 style={{ transform: `scale(${zoomLevel / 100})` }}
                 className="transition-transform duration-200 ease-out flex items-center justify-center"
             >
-                {/* Document Sheet Container */}
                 <div
                     ref={paperRef}
                     className="relative w-[500px] h-[707px] bg-white rounded-[4px] shadow-2xl flex flex-col justify-between overflow-hidden cursor-default"
                 >
-                    {/* Loading Overlay */}
                     {isLoading && (
                         <div className="absolute inset-0 z-30 bg-white/80 backdrop-blur-sm flex items-center justify-center">
                             <span className="font-sans text-xs text-black/50 animate-pulse">
@@ -217,21 +222,18 @@ export const DocumentCanvas: React.FC<DocumentCanvasProps> = ({
                         </div>
                     )}
 
-                    {/* RENDER MODE A: PDF Canvas */}
                     {pdfDoc ? (
                         <canvas
                             ref={pdfCanvasRef}
                             className="w-full h-full object-contain pointer-events-none"
                         />
                     ) : imageUrl ? (
-                        /* RENDER MODE B: Image File */
                         <img
                             src={imageUrl}
                             alt="Document Page"
                             className="w-full h-full object-contain pointer-events-none"
                         />
                     ) : (
-                        /* RENDER MODE C: Fallback Wireframe */
                         <div className="w-full h-full p-8 flex flex-col justify-between text-black/80 font-serif">
                             <div className="space-y-4">
                                 <div className="w-1/3 h-4 bg-black/10 rounded" />
@@ -250,7 +252,7 @@ export const DocumentCanvas: React.FC<DocumentCanvasProps> = ({
                         </div>
                     )}
 
-                    {/* ================= OVERLAY SIGNATURE FIELDS ================= */}
+                    {/* OVERLAY SIGNATURE FIELDS */}
                     {currentPageFields.map((field) => {
                         const globalIndex = fields.findIndex((f) => f.id === field.id);
                         const isActive = activeFieldIndex === globalIndex;
