@@ -8,7 +8,7 @@ export interface SignatureField {
     y: number; // percentage (0 - 100)
     label?: string;
     isSigned: boolean;
-    signatureValue?: string; // Data URL or text
+    signatureValue?: string;
 }
 
 interface DocumentCanvasProps {
@@ -36,10 +36,8 @@ export const DocumentCanvas: React.FC<DocumentCanvasProps> = ({
     const [draggingId, setDraggingId] = useState<string | null>(null);
     const dragOffsetRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
 
-    /* Filter fields for current active page */
     const currentPageFields = fields.filter((f) => f.page === currentPage);
 
-    /* Sender Drag Handling */
     const handlePointerDown = (
         e: React.PointerEvent<HTMLDivElement>,
         field: SignatureField
@@ -56,16 +54,21 @@ export const DocumentCanvas: React.FC<DocumentCanvasProps> = ({
         };
     };
 
-    const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>, fieldId: string) => {
+    const handlePointerMove = (
+        e: React.PointerEvent<HTMLDivElement>,
+        fieldId: string
+    ) => {
         if (mode !== "sender" || draggingId !== fieldId || !paperRef.current) return;
 
         const paperRect = paperRef.current.getBoundingClientRect();
 
-        // Calculate new relative X and Y percentages within paper boundaries
-        let newX = ((e.clientX - paperRect.left - dragOffsetRef.current.x) / paperRect.width) * 100;
-        let newY = ((e.clientY - paperRect.top - dragOffsetRef.current.y) / paperRect.height) * 100;
+        let newX =
+            ((e.clientX - paperRect.left - dragOffsetRef.current.x) / paperRect.width) *
+            100;
+        let newY =
+            ((e.clientY - paperRect.top - dragOffsetRef.current.y) / paperRect.height) *
+            100;
 
-        // Clamp within canvas boundaries
         newX = Math.max(2, Math.min(78, newX));
         newY = Math.max(2, Math.min(90, newY));
 
@@ -76,25 +79,28 @@ export const DocumentCanvas: React.FC<DocumentCanvasProps> = ({
         }
     };
 
-    const handlePointerUp = (e: React.PointerEvent<HTMLDivElement>, fieldId: string) => {
+    const handlePointerUp = (
+        e: React.PointerEvent<HTMLDivElement>,
+        fieldId: string
+    ) => {
         if (mode !== "sender" || draggingId !== fieldId) return;
         e.currentTarget.releasePointerCapture(e.pointerId);
         setDraggingId(null);
     };
 
     return (
-        <div className="relative w-full h-full flex items-center justify-center overflow-auto p-8 select-none">
+        <div className="relative w-full h-full flex items-center justify-center overflow-auto p-8 select-none [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar]:h-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-[#373737] [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-[#505050]">
             {/* Scalable Canvas Sheet Container */}
             <div
                 style={{ transform: `scale(${zoomLevel / 100})` }}
                 className="transition-transform duration-200 ease-out flex items-center justify-center"
             >
-                {/* Paper Document Container (A4 Proportions) */}
+                {/* Paper Document Container */}
                 <div
                     ref={paperRef}
                     className="relative w-[500px] h-[707px] bg-white rounded-[4px] shadow-2xl flex flex-col justify-between p-8 text-black/80 font-serif"
                 >
-                    {/* Mock PDF Document Content Page Preview */}
+                    {/* Mock PDF Document Preview */}
                     <div className="space-y-4">
                         <div className="w-1/3 h-4 bg-black/10 rounded" />
                         <div className="w-full h-2.5 bg-black/5 rounded" />
@@ -112,7 +118,7 @@ export const DocumentCanvas: React.FC<DocumentCanvasProps> = ({
                         Page {currentPage}
                     </div>
 
-                    {/* ================= OVERLAY SIGNATURE FIELDS ================= */}
+                    {/* Overlay Signature Fields */}
                     {currentPageFields.map((field) => {
                         const globalIndex = fields.findIndex((f) => f.id === field.id);
                         const isActive = activeFieldIndex === globalIndex;
@@ -146,7 +152,6 @@ export const DocumentCanvas: React.FC<DocumentCanvasProps> = ({
                                     }
                 `}
                             >
-                                {/* Field Status Label or Signature Display */}
                                 {field.isSigned ? (
                                     <div className="flex items-center justify-between w-full">
                                         <span className="font-sans font-medium text-xs text-emerald-700 italic truncate max-w-[120px]">
