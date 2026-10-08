@@ -1,3 +1,4 @@
+/* src/components/editor/SenderWorkspace.tsx */
 import React, { useState } from "react";
 import Image from "next/image";
 import { IconButton } from "@/components/ui/IconButton";
@@ -33,18 +34,23 @@ export const SenderWorkspace: React.FC<SenderWorkspaceProps> = ({
     const [zoomLevel, setZoomLevel] = useState(100);
     const [fields, setFields] = useState<SignatureField[]>(initialFields);
     const [activeFieldIndex, setActiveFieldIndex] = useState<number | null>(null);
+    const [isPlacingBlock, setIsPlacingBlock] = useState(false);
 
     /* Zoom Handlers */
     const handleZoomOut = () => setZoomLevel((prev) => Math.max(50, prev - 10));
     const handleZoomIn = () => setZoomLevel((prev) => Math.min(200, prev + 10));
 
-    /* Block Placement & Navigation */
-    const handleAddBlock = () => {
+    /* Tap-to-Place Block Handler */
+    const handleStartPlacement = () => {
+        setIsPlacingBlock(true);
+    };
+
+    const handleCanvasClickToPlace = (x: number, y: number) => {
         const newField: SignatureField = {
             id: `field-${Date.now()}`,
             page: currentPage,
-            x: 32,
-            y: 65,
+            x,
+            y,
             label: `Signature ${fields.length + 1}`,
             isSigned: false,
         };
@@ -52,6 +58,13 @@ export const SenderWorkspace: React.FC<SenderWorkspaceProps> = ({
         const nextFields = [...fields, newField];
         setFields(nextFields);
         setActiveFieldIndex(nextFields.length - 1);
+        setIsPlacingBlock(false); // Disarm placement mode once dropped
+    };
+
+    const handleFieldDelete = (fieldId: string) => {
+        const filtered = fields.filter((f) => f.id !== fieldId);
+        setFields(filtered);
+        setActiveFieldIndex(filtered.length > 0 ? 0 : null);
     };
 
     const handlePrevBlock = () => {
@@ -78,7 +91,6 @@ export const SenderWorkspace: React.FC<SenderWorkspaceProps> = ({
         }
     };
 
-    /* Sync canvas page with selected block */
     const handleSelectField = (index: number) => {
         setActiveFieldIndex(index);
         if (fields[index]) {
@@ -106,7 +118,7 @@ export const SenderWorkspace: React.FC<SenderWorkspaceProps> = ({
                 onClick={(e) => e.stopPropagation()}
                 className="relative w-[1214.4px] h-[703px] bg-[#202020] border border-[#373737] rounded-[24px] flex overflow-hidden shadow-2xl cursor-default"
             >
-                {/* Dynamic Thumbnail Sidebar with File Preview */}
+                {/* Dynamic Thumbnail Sidebar */}
                 <PageThumbnailSidebar
                     file={file}
                     currentPage={currentPage}
@@ -205,8 +217,11 @@ export const SenderWorkspace: React.FC<SenderWorkspaceProps> = ({
                             zoomLevel={zoomLevel}
                             fields={fields}
                             activeFieldIndex={activeFieldIndex}
+                            isPlacingBlock={isPlacingBlock}
+                            onCanvasClickToPlace={handleCanvasClickToPlace}
                             onFieldSelect={handleSelectField}
                             onFieldsChange={(updated) => setFields(updated)}
+                            onFieldDelete={handleFieldDelete}
                             onTotalPagesChange={(pages) => setTotalPages(pages)}
                         />
                     </main>
@@ -254,15 +269,17 @@ export const SenderWorkspace: React.FC<SenderWorkspaceProps> = ({
 
                         <div className="flex items-center gap-[16px]">
                             <button
-                                onClick={handleAddBlock}
-                                className="
-                  glass-button
+                                onClick={handleStartPlacement}
+                                className={`
                   w-[259px] h-[56px] px-4 py-2
                   inline-flex items-center justify-center gap-3
-                  rounded-full text-white
-                  font-sans font-medium text-[20px] tracking-tight
-                  active:scale-[0.98] cursor-pointer
-                "
+                  rounded-full text-white transition-all duration-150
+                  font-sans font-medium text-[20px] tracking-tight cursor-pointer
+                  ${isPlacingBlock
+                                        ? "bg-[#3C70F2] ring-4 ring-[#3C70F2]/30 scale-[1.02]"
+                                        : "glass-button active:scale-[0.98]"
+                                    }
+                `}
                             >
                                 <Image
                                     src="/icon-sig-scrib.svg"
@@ -270,7 +287,7 @@ export const SenderWorkspace: React.FC<SenderWorkspaceProps> = ({
                                     width={24}
                                     height={24}
                                 />
-                                <span>Add Signature Block</span>
+                                <span>{isPlacingBlock ? "Click Canvas to Drop" : "Add Signature Block"}</span>
                             </button>
 
                             <ConfirmCheckButton onClick={() => onConfirm && onConfirm(fields)} />

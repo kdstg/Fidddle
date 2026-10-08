@@ -13,7 +13,8 @@ const ThumbnailCard: React.FC<{
     pdfDoc: pdfjs.PDFDocumentProxy | null;
     imageUrl: string | null;
     pageNumber: number;
-}> = ({ pdfDoc, imageUrl, pageNumber }) => {
+    isActive: boolean;
+}> = ({ pdfDoc, imageUrl, pageNumber, isActive }) => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
 
     useEffect(() => {
@@ -33,7 +34,6 @@ const ThumbnailCard: React.FC<{
                 const context = canvas.getContext("2d");
                 if (!context) return;
 
-                // Render at 2x thumbnail scale for sharp crisp text on high-DPI screens
                 const unscaledViewport = page.getViewport({ scale: 1.0, rotation: 0 });
                 const targetWidth = 160;
                 const scale = targetWidth / unscaledViewport.width;
@@ -65,11 +65,16 @@ const ThumbnailCard: React.FC<{
         };
     }, [pdfDoc, pageNumber]);
 
+    /* 4px stroke directly around thumbnail edge */
+    const activeClasses = isActive
+        ? "ring-4 ring-[#3C70F2] border-transparent scale-[1.02]"
+        : "border border-black/10 opacity-60 group-hover:opacity-100";
+
     if (pdfDoc) {
         return (
             <canvas
                 ref={canvasRef}
-                className="w-[80px] h-[113px] object-cover bg-white rounded-[2px] shadow-md border border-black/10"
+                className={`w-[80px] h-[113px] object-cover bg-white rounded-[3px] shadow-md transition-all duration-150 ${activeClasses}`}
             />
         );
     }
@@ -79,14 +84,16 @@ const ThumbnailCard: React.FC<{
             <img
                 src={imageUrl}
                 alt={`Page ${pageNumber}`}
-                className="w-[80px] h-[113px] object-cover bg-white rounded-[2px] shadow-md border border-black/10"
+                className={`w-[80px] h-[113px] object-cover bg-white rounded-[3px] shadow-md transition-all duration-150 ${activeClasses}`}
             />
         );
     }
 
     /* Skeleton Fallback */
     return (
-        <div className="w-[80px] h-[113px] bg-white rounded-[2px] shadow-md flex flex-col justify-between p-2 overflow-hidden border border-black/10">
+        <div
+            className={`w-[80px] h-[113px] bg-white rounded-[3px] shadow-md flex flex-col justify-between p-2 overflow-hidden transition-all duration-150 ${activeClasses}`}
+        >
             <div className="space-y-1">
                 <div className="w-1/2 h-1 bg-black/15 rounded" />
                 <div className="w-full h-1 bg-black/10 rounded" />
@@ -155,7 +162,7 @@ export const PageThumbnailSidebar: React.FC<PageThumbnailSidebarProps> = ({
                 Pages ({totalPages})
             </h2>
 
-            <div className="flex flex-col gap-3">
+            <div className="flex flex-col gap-4 items-center">
                 {pages.map((page) => {
                     const isActive = page === currentPage;
 
@@ -163,22 +170,17 @@ export const PageThumbnailSidebar: React.FC<PageThumbnailSidebarProps> = ({
                         <button
                             key={page}
                             onClick={() => onSelectPage(page)}
-                            className={`
-                group relative flex flex-col items-center gap-1.5 p-2 rounded-[12px] transition-all duration-150 cursor-pointer
-                ${isActive
-                                    ? "bg-[#3C70F2]/10 ring-2 ring-[#3C70F2]"
-                                    : "hover:bg-white/5 opacity-70 hover:opacity-100"
-                                }
-              `}
+                            className="group flex flex-col items-center gap-2 cursor-pointer p-1"
                         >
                             <ThumbnailCard
                                 pdfDoc={pdfDoc}
                                 imageUrl={imageUrl}
                                 pageNumber={page}
+                                isActive={isActive}
                             />
 
                             <span
-                                className={`font-sans text-xs ${isActive ? "text-[#3C70F2] font-semibold" : "text-white/60"
+                                className={`font-sans text-xs transition-colors duration-150 ${isActive ? "text-[#3C70F2] font-semibold" : "text-white/60 group-hover:text-white"
                                     }`}
                             >
                                 {page}

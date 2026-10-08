@@ -19,8 +19,11 @@ interface DocumentCanvasProps {
     fields: SignatureField[];
     file?: File | string | null;
     activeFieldIndex?: number | null;
+    isPlacingBlock?: boolean;
+    onCanvasClickToPlace?: (xPercent: number, yPercent: number) => void;
     onFieldSelect?: (index: number) => void;
     onFieldsChange?: (fields: SignatureField[]) => void;
+    onFieldDelete?: (fieldId: string) => void;
     onSignFieldClick?: (fieldId: string) => void;
     onTotalPagesChange?: (pages: number) => void;
 }
@@ -32,8 +35,11 @@ export const DocumentCanvas: React.FC<DocumentCanvasProps> = ({
     fields,
     file,
     activeFieldIndex,
+    isPlacingBlock = false,
+    onCanvasClickToPlace,
     onFieldSelect,
     onFieldsChange,
+    onFieldDelete,
     onSignFieldClick,
     onTotalPagesChange,
 }) => {
@@ -47,14 +53,14 @@ export const DocumentCanvas: React.FC<DocumentCanvasProps> = ({
 
     const dragOffsetRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
 
-    /* ================= LOCAL PDF WORKER SETUP ================= */
+    /* Set Local Worker */
     useEffect(() => {
         if (typeof window !== "undefined") {
             pdfjs.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
         }
     }, []);
 
-    /* ================= LOAD FILE (PDF vs Image) ================= */
+    /* Load File Source */
     useEffect(() => {
         if (!file) {
             setImageUrl(null);
@@ -111,7 +117,7 @@ export const DocumentCanvas: React.FC<DocumentCanvasProps> = ({
         }
     };
 
-    /* ================= RENDER PDF PAGE TO CANVAS ================= */
+    /* Render PDF Page with Task Cancellation */
     useEffect(() => {
         if (!pdfDoc || !pdfCanvasRef.current) return;
 
@@ -130,22 +136,18 @@ export const DocumentCanvas: React.FC<DocumentCanvasProps> = ({
                 const context = canvas.getContext("2d");
                 if (!context) return;
 
-                // Force normalized 0-degree rotation so inverted PDFs render right side up
                 const viewport = page.getViewport({ scale: 1.5, rotation: 0 });
 
                 canvas.height = viewport.height;
                 canvas.width = viewport.width;
 
-                const renderContext = {
+                renderTask = page.render({
                     canvasContext: context,
                     viewport: viewport,
-                };
+                } as any);
 
-                // Store active render task reference
-                renderTask = page.render(renderContext as any);
                 await renderTask.promise;
             } catch (err: any) {
-                // Ignore explicit task cancellation errors during page switching
                 if (err?.name !== "RenderingCancelledException") {
                     console.error("Render page error:", err);
                 }
@@ -162,7 +164,22 @@ export const DocumentCanvas: React.FC<DocumentCanvasProps> = ({
         };
     }, [pdfDoc, currentPage]);
 
-    /* ================= SENDER DRAG HANDLERS ================= */
+    /* Handle Tap-to-Place on Paper Canvas */
+    const handlePaperClick = (e: React.MouseEvent<HTMLDivElement>) => {
+        if (!paperRef.current || !isPlacingBlock || !onCanvasClickToPlace) return;
+
+        const paperRect = paperRef.current.getBoundingClientRect();
+        const x = ((e.clientX - paperRect.left) / paperRect.width) * 100;
+        const y = ((e.clientY - paperRect.top) / paperRect.height) * 100;
+
+        // Constrain relative placement within margins
+        const clampedX = Math.max(2, Math.min(75, x));
+        const clampedY = Math.max(2, Math.min(90, y));
+
+        onCanvasClickToPlace(clampedX, clampedY);
+    };
+
+    /* Drag Handlers */
     const handlePointerDown = (
         e: React.PointerEvent<HTMLDivElement>,
         field: SignatureField
@@ -223,7 +240,11 @@ export const DocumentCanvas: React.FC<DocumentCanvasProps> = ({
             >
                 <div
                     ref={paperRef}
-                    className="relative w-[500px] h-[707px] bg-white rounded-[4px] shadow-2xl flex flex-col justify-between overflow-hidden cursor-default"
+                    onClick={handlePaperClick}
+                    className={`
+            relative w-[500px] h-[707px] bg-white rounded-[4px] shadow-2xl flex flex-col justify-between overflow-hidden
+            ${isPlacingBlock ? "cursor-crosshair ring-2 ring-[#3C70F2]" : "cursor-default"}
+          `}
                 >
                     {isLoading && (
                         <div className="absolute inset-0 z-30 bg-white/80 backdrop-blur-sm flex items-center justify-center">
@@ -286,20 +307,33 @@ export const DocumentCanvas: React.FC<DocumentCanvasProps> = ({
                                     top: `${field.y}%`,
                                 }}
                                 className={`
-                  absolute w-[180px] h-[56px] rounded-[12px]
-                  flex items-center justify-between px-3 cursor-pointer
-                  transition-all duration-150
+                  absolute w-[184px] h-[52px] rounded-[12px] bg-[#1A1A1A] text-white
+                  flex items-center justify-between px-3 transition-all duration-150 select-none shadow-2xl
                   ${isActive
-                                        ? "bg-[#3C70F2]/15 border-2 border-[#3C70F2] ring-4 ring-[#3C70F2]/20 shadow-lg scale-[1.02] z-20"
+                                        ? "border-2 border-[#3C70F2] ring-4 ring-[#3C70F2]/20 z-30 cursor-grabbing scale-[1.02]"
                                         : field.isSigned
-                                            ? "bg-emerald-500/10 border border-emerald-500/50 text-emerald-950 z-10"
-                                            : "bg-[#1D1D1D]/90 backdrop-blur-sm border border-dashed border-[#3C70F2] text-white hover:border-solid hover:bg-[#1D1D1D] z-10"
+                                            ? "bg-emerald-950/90 border border-emerald-500/80 text-white z-10 cursor-pointer"
+                                            : "border border-[#373737] hover:border-[#3C70F2] z-20 cursor-grab"
                                     }
                 `}
                             >
+                                {/* Delete button on active field */}
+                                {mode === "sender" && isActive && onFieldDelete && (
+                                    <button
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            onFieldDelete(field.id);
+                                        }}
+                                        className="absolute -top-2 -right-2 w-5 h-5 bg-[#F23C3C] text-white rounded-full flex items-center justify-center font-sans text-xs shadow-md hover:scale-110 active:scale-95 transition-transform"
+                                        title="Delete field"
+                                    >
+                                        ×
+                                    </button>
+                                )}
+
                                 {field.isSigned ? (
                                     <div className="flex items-center justify-between w-full">
-                                        <span className="font-sans font-medium text-xs text-emerald-700 italic truncate max-w-[120px]">
+                                        <span className="font-sans font-medium text-xs text-emerald-400 italic truncate max-w-[120px]">
                                             {field.signatureValue || "Signed"}
                                         </span>
                                         <div className="w-5 h-5 rounded-full bg-emerald-500 flex items-center justify-center text-white">
@@ -316,7 +350,7 @@ export const DocumentCanvas: React.FC<DocumentCanvasProps> = ({
                                         <div
                                             className={`
                         w-7 h-7 rounded-full flex items-center justify-center shrink-0
-                        ${isActive ? "bg-[#3C70F2] text-white" : "bg-[#373737] text-white/70"}
+                        ${isActive ? "bg-[#3C70F2] text-white" : "bg-[#282828] text-white/70"}
                       `}
                                         >
                                             <Image
@@ -331,7 +365,7 @@ export const DocumentCanvas: React.FC<DocumentCanvasProps> = ({
                                                 {field.label || "Signature"}
                                             </span>
                                             <span className="font-sans font-light text-[10px] text-white/50">
-                                                {mode === "sender" ? "Drag to place" : "Click to sign"}
+                                                {mode === "sender" ? "Drag to adjust" : "Click to sign"}
                                             </span>
                                         </div>
                                     </div>
