@@ -3,7 +3,6 @@ import Image from "next/image";
 import { IconButton } from "@/components/ui/IconButton";
 import { ConfirmCheckButton } from "@/components/ui/ConfirmCheckButton";
 import { PageThumbnailSidebar } from "./PageThumbnailSidebar";
-import { Notification01Icon } from "hugeicons-react";
 
 interface Collaborator {
     id: string;
@@ -25,8 +24,6 @@ export const DocumentWorkspace: React.FC<DocumentWorkspaceProps> = ({
     collaborators = [],
     onAddSignatureBlock,
     onConfirm,
-    onImportUrl,
-    onFileSelect,
 }) => {
     const [currentPage, setCurrentPage] = useState(1);
     const [placedBlocksCount, setPlacedBlocksCount] = useState(0);
@@ -37,60 +34,10 @@ export const DocumentWorkspace: React.FC<DocumentWorkspaceProps> = ({
     };
 
     return (
-        <div className="relative w-screen h-screen bg-[#202020] overflow-hidden flex flex-col justify-between p-6 sm:p-8 select-none">
-            {/* Outer Viewport Header (Persistent Top Navigation) */}
-            <header className="w-full flex items-center justify-between z-10">
-                <div className="flex items-center gap-3">
-                    <IconButton
-                        size="lg"
-                        variant="glass"
-                        icon={
-                            <Image
-                                src="/icon-gdrive.svg"
-                                alt="Google Drive"
-                                width={28}
-                                height={28}
-                            />
-                        }
-                        onClick={onFileSelect}
-                    />
-                    <IconButton
-                        size="lg"
-                        variant="glass"
-                        icon={
-                            <Image
-                                src="/icon-dropbox.svg"
-                                alt="Dropbox"
-                                width={28}
-                                height={28}
-                            />
-                        }
-                        onClick={onFileSelect}
-                    />
-                    <IconButton
-                        size="lg"
-                        variant="glass"
-                        icon={
-                            <Image
-                                src="/icon-link.svg"
-                                alt="Import Link"
-                                width={28}
-                                height={28}
-                            />
-                        }
-                        onClick={onImportUrl || onFileSelect}
-                    />
-                </div>
-
-                <IconButton
-                    size="lg"
-                    variant="solid"
-                    icon={<Notification01Icon size={28} className="text-white" />}
-                />
-            </header>
-
+        /* Fixed Fullscreen Modal Overlay (Dimmed + Blurred Backdrop) */
+        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-md flex items-center justify-center p-6 sm:p-8 select-none">
             {/* Center 1214.4px x 703px Main Workspace Card */}
-            <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[1214.4px] h-[703px] bg-[#202020] border border-[#373737] rounded-[24px] flex overflow-hidden shadow-2xl z-20">
+            <div className="relative w-[1214.4px] h-[703px] bg-[#202020] border border-[#373737] rounded-[24px] flex overflow-hidden shadow-2xl">
                 {/* Left Page Sidebar (242.4px) */}
                 <PageThumbnailSidebar
                     currentPage={currentPage}
@@ -145,9 +92,8 @@ export const DocumentWorkspace: React.FC<DocumentWorkspaceProps> = ({
                         </div>
                     </header>
 
-                    {/* Seamless PDF Canvas Area (No inner gray box) */}
+                    {/* Main PDF Canvas Viewport */}
                     <main className="relative flex-1 my-2 flex items-center justify-center">
-                        {/* PDF page canvas renders directly here */}
                         <p className="font-sans text-sm text-white/20 select-none pointer-events-none">
                             PDF Page View Area
                         </p>
@@ -155,7 +101,7 @@ export const DocumentWorkspace: React.FC<DocumentWorkspaceProps> = ({
 
                     {/* Bottom Floating Action Toolbar */}
                     <div className="w-full bg-[#202020] border border-[#373737] rounded-full px-4 py-2 flex items-center justify-between z-10 shadow-lg">
-                        {/* Left Controls: Block count + 24px gap + Arrows */}
+                        {/* Left Controls: Block count + 24px gap + Arrows (16px gap) */}
                         <div className="flex items-center gap-[24px]">
                             <span className="font-sans font-normal text-[20px] text-white whitespace-nowrap">
                                 {placedBlocksCount} block{placedBlocksCount === 1 ? "" : "s"} added
