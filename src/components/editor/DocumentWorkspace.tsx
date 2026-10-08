@@ -15,8 +15,7 @@ interface DocumentWorkspaceProps {
     collaborators?: Collaborator[];
     onAddSignatureBlock?: () => void;
     onConfirm?: () => void;
-    onImportUrl?: () => void;
-    onFileSelect?: () => void;
+    onClose?: () => void;
 }
 
 export const DocumentWorkspace: React.FC<DocumentWorkspaceProps> = ({
@@ -24,6 +23,7 @@ export const DocumentWorkspace: React.FC<DocumentWorkspaceProps> = ({
     collaborators = [],
     onAddSignatureBlock,
     onConfirm,
+    onClose,
 }) => {
     const [currentPage, setCurrentPage] = useState(1);
     const [placedBlocksCount, setPlacedBlocksCount] = useState(0);
@@ -33,11 +33,28 @@ export const DocumentWorkspace: React.FC<DocumentWorkspaceProps> = ({
         if (onAddSignatureBlock) onAddSignatureBlock();
     };
 
+    const handleBackdropPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+        // Check if the click target is directly the backdrop itself, not its children
+        if (e.target === e.currentTarget && onClose) {
+            e.stopPropagation();
+            e.preventDefault();
+            onClose();
+        }
+    };
+
     return (
-        /* Fixed Fullscreen Modal Overlay (Dimmed + Blurred Backdrop) */
-        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-md flex items-center justify-center p-6 sm:p-8 select-none">
+        /* Fullscreen Modal Overlay */
+        <div
+            onPointerDown={handleBackdropPointerDown}
+            onClick={(e) => e.stopPropagation()}
+            className="fixed inset-0 z-50 bg-black/40 backdrop-blur-md flex items-center justify-center p-6 sm:p-8 select-none cursor-pointer"
+        >
             {/* Center 1214.4px x 703px Main Workspace Card */}
-            <div className="relative w-[1214.4px] h-[703px] bg-[#202020] border border-[#373737] rounded-[24px] flex overflow-hidden shadow-2xl">
+            <div
+                onPointerDown={(e) => e.stopPropagation()}
+                onClick={(e) => e.stopPropagation()}
+                className="relative w-[1214.4px] h-[703px] bg-[#202020] border border-[#373737] rounded-[24px] flex overflow-hidden shadow-2xl cursor-default"
+            >
                 {/* Left Page Sidebar (242.4px) */}
                 <PageThumbnailSidebar
                     currentPage={currentPage}
@@ -48,7 +65,6 @@ export const DocumentWorkspace: React.FC<DocumentWorkspaceProps> = ({
                 <div className="flex-1 h-full flex flex-col justify-between px-[40px] py-6 relative">
                     {/* Top Header Bar inside Card */}
                     <header className="w-full flex items-center justify-between z-10 gap-4">
-                        {/* Document Title with Truncation */}
                         <h1
                             className="font-sans font-normal text-[20px] text-white tracking-tight max-w-[550px] truncate"
                             title={documentName}
@@ -57,7 +73,6 @@ export const DocumentWorkspace: React.FC<DocumentWorkspaceProps> = ({
                         </h1>
 
                         <div className="flex items-center gap-4 shrink-0">
-                            {/* Dynamic Collaborators (Only rendered if present) */}
                             {collaborators.length > 0 && (
                                 <div className="flex items-center -space-x-2">
                                     {collaborators.slice(0, 3).map((collab) => (
@@ -76,7 +91,6 @@ export const DocumentWorkspace: React.FC<DocumentWorkspaceProps> = ({
                                 </div>
                             )}
 
-                            {/* Share Button (Solid Surface 56px x 56px) */}
                             <IconButton
                                 size="lg"
                                 variant="solid"
@@ -101,7 +115,6 @@ export const DocumentWorkspace: React.FC<DocumentWorkspaceProps> = ({
 
                     {/* Bottom Floating Action Toolbar */}
                     <div className="w-full bg-[#202020] border border-[#373737] rounded-full px-4 py-2 flex items-center justify-between z-10 shadow-lg">
-                        {/* Left Controls: Block count + 24px gap + Arrows (16px gap) */}
                         <div className="flex items-center gap-[24px]">
                             <span className="font-sans font-normal text-[20px] text-white whitespace-nowrap">
                                 {placedBlocksCount} block{placedBlocksCount === 1 ? "" : "s"} added
@@ -137,7 +150,6 @@ export const DocumentWorkspace: React.FC<DocumentWorkspaceProps> = ({
                             </div>
                         </div>
 
-                        {/* Right Controls: Signature CTA + 16px gap + Blue Check */}
                         <div className="flex items-center gap-[16px]">
                             <button
                                 onClick={handleAddBlock}
