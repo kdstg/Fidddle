@@ -51,7 +51,16 @@ export const DocumentCanvas: React.FC<DocumentCanvasProps> = ({
     const [pdfDoc, setPdfDoc] = useState<pdfjs.PDFDocumentProxy | null>(null);
     const [isLoading, setIsLoading] = useState(false);
 
-    const dragOffsetRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+    // Keep live refs for drag event handlers to prevent stale closure bugs
+    const fieldsRef = useRef(fields);
+    useEffect(() => {
+        fieldsRef.current = fields;
+    }, [fields]);
+
+    const onFieldsChangeRef = useRef(onFieldsChange);
+    useEffect(() => {
+        onFieldsChangeRef.current = onFieldsChange;
+    }, [onFieldsChange]);
 
     /* Set Local Worker */
     useEffect(() => {
@@ -117,7 +126,7 @@ export const DocumentCanvas: React.FC<DocumentCanvasProps> = ({
         }
     };
 
-    /* Render PDF Page with Task Cancellation */
+    /* Render PDF Page with Cancellation */
     useEffect(() => {
         if (!pdfDoc || !pdfCanvasRef.current) return;
 
@@ -172,62 +181,65 @@ export const DocumentCanvas: React.FC<DocumentCanvasProps> = ({
         const x = ((e.clientX - paperRect.left) / paperRect.width) * 100;
         const y = ((e.clientY - paperRect.top) / paperRect.height) * 100;
 
-        // Constrain relative placement within margins
-        const clampedX = Math.max(2, Math.min(75, x));
+        const clampedX = Math.max(2, Math.min(72, x));
         const clampedY = Math.max(2, Math.min(90, y));
 
         onCanvasClickToPlace(clampedX, clampedY);
     };
 
-    /* Drag Handlers */
-    const handlePointerDown = (
+    /* Smooth Window-based Pointer Dragging */
+    const handleStartDrag = (
         e: React.PointerEvent<HTMLDivElement>,
-        field: SignatureField
+        field: SignatureField,
+        globalIndex: number
     ) => {
-        if (mode !== "sender") return;
+        if (mode !== "sender" || isPlacingBlock) return;
+
         e.stopPropagation();
-        e.currentTarget.setPointerCapture(e.pointerId);
 
-        setDraggingId(field.id);
-        const rect = e.currentTarget.getBoundingClientRect();
-        dragOffsetRef.current = {
-            x: e.clientX - rect.left,
-            y: e.clientY - rect.top,
-        };
-    };
+        if (onFieldSelect) {
+            onFieldSelect(globalIndex);
+        }
 
-    const handlePointerMove = (
-        e: React.PointerEvent<HTMLDivElement>,
-        fieldId: string
-    ) => {
-        if (mode !== "sender" || draggingId !== fieldId || !paperRef.current) return;
-
+        if (!paperRef.current) return;
         const paperRect = paperRef.current.getBoundingClientRect();
 
-        let newX =
-            ((e.clientX - paperRect.left - dragOffsetRef.current.x) / paperRect.width) *
-            100;
-        let newY =
-            ((e.clientY - paperRect.top - dragOffsetRef.current.y) / paperRect.height) *
-            100;
+        // Calculate mouse offset relative to top-left of the field card
+        const fieldLeftPx = (field.x / 100) * paperRect.width;
+        const fieldTopPx = (field.y / 100) * paperRect.height;
+        const offsetX = e.clientX - paperRect.left - fieldLeftPx;
+        const offsetY = e.clientY - paperRect.top - fieldTopPx;
 
-        newX = Math.max(2, Math.min(78, newX));
-        newY = Math.max(2, Math.min(90, newY));
+        const targetFieldId = field.id;
+        setDraggingId(targetFieldId);
 
-        if (onFieldsChange) {
-            onFieldsChange(
-                fields.map((f) => (f.id === fieldId ? { ...f, x: newX, y: newY } : f))
-            );
-        }
-    };
+        const handleWindowPointerMove = (moveEvent: PointerEvent) => {
+            if (!paperRef.current) return;
+            const rect = paperRef.current.getBoundingClientRect();
 
-    const handlePointerUp = (
-        e: React.PointerEvent<HTMLDivElement>,
-        fieldId: string
-    ) => {
-        if (mode !== "sender" || draggingId !== fieldId) return;
-        e.currentTarget.releasePointerCapture(e.pointerId);
-        setDraggingId(null);
+            let newX = ((moveEvent.clientX - rect.left - offsetX) / rect.width) * 100;
+            let newY = ((moveEvent.clientY - rect.top - offsetY) / rect.height) * 100;
+
+            // Keep within document boundary margins
+            newX = Math.max(0, Math.min(74, newX));
+            newY = Math.max(0, Math.min(92, newY));
+
+            if (onFieldsChangeRef.current) {
+                const updated = fieldsRef.current.map((f) =>
+                    f.id === targetFieldId ? { ...f, x: newX, y: newY } : f
+                );
+                onFieldsChangeRef.current(updated);
+            }
+        };
+
+        const handleWindowPointerUp = () => {
+            setDraggingId(null);
+            window.removeEventListener("pointermove", handleWindowPointerMove);
+            window.removeEventListener("pointerup", handleWindowPointerUp);
+        };
+
+        window.addEventListener("pointermove", handleWindowPointerMove);
+        window.addEventListener("pointerup", handleWindowPointerUp);
     };
 
     const currentPageFields = fields.filter((f) => f.page === currentPage);
@@ -288,13 +300,12 @@ export const DocumentCanvas: React.FC<DocumentCanvasProps> = ({
                     {currentPageFields.map((field) => {
                         const globalIndex = fields.findIndex((f) => f.id === field.id);
                         const isActive = activeFieldIndex === globalIndex;
+                        const isDraggingThis = draggingId === field.id;
 
                         return (
                             <div
                                 key={field.id}
-                                onPointerDown={(e) => handlePointerDown(e, field)}
-                                onPointerMove={(e) => handlePointerMove(e, field.id)}
-                                onPointerUp={(e) => handlePointerUp(e, field.id)}
+                                onPointerDown={(e) => handleStartDrag(e, field, globalIndex)}
                                 onClick={(e) => {
                                     e.stopPropagation();
                                     if (onFieldSelect) onFieldSelect(globalIndex);
@@ -308,23 +319,32 @@ export const DocumentCanvas: React.FC<DocumentCanvasProps> = ({
                                 }}
                                 className={`
                   absolute w-[184px] h-[52px] rounded-[12px] bg-[#1A1A1A] text-white
-                  flex items-center justify-between px-3 transition-all duration-150 select-none shadow-2xl
+                  flex items-center justify-between px-3 transition-shadow duration-150 select-none shadow-2xl
                   ${isActive
-                                        ? "border-2 border-[#3C70F2] ring-4 ring-[#3C70F2]/20 z-30 cursor-grabbing scale-[1.02]"
+                                        ? "border-2 border-[#3C70F2] ring-4 ring-[#3C70F2]/20 z-30"
                                         : field.isSigned
                                             ? "bg-emerald-950/90 border border-emerald-500/80 text-white z-10 cursor-pointer"
-                                            : "border border-[#373737] hover:border-[#3C70F2] z-20 cursor-grab"
+                                            : "border border-[#373737] hover:border-[#3C70F2] z-20"
                                     }
+                  ${mode === "sender" ? (isDraggingThis ? "cursor-grabbing scale-[1.02]" : "cursor-grab") : "cursor-pointer"}
                 `}
                             >
-                                {/* Delete button on active field */}
+                                {/* Delete Button (Isolated from Drag Propagation) */}
                                 {mode === "sender" && isActive && onFieldDelete && (
                                     <button
+                                        type="button"
+                                        onPointerDown={(e) => {
+                                            e.stopPropagation();
+                                        }}
+                                        onPointerUp={(e) => {
+                                            e.stopPropagation();
+                                        }}
                                         onClick={(e) => {
                                             e.stopPropagation();
+                                            e.preventDefault();
                                             onFieldDelete(field.id);
                                         }}
-                                        className="absolute -top-2 -right-2 w-5 h-5 bg-[#F23C3C] text-white rounded-full flex items-center justify-center font-sans text-xs shadow-md hover:scale-110 active:scale-95 transition-transform"
+                                        className="absolute -top-2 -right-2 w-6 h-6 bg-[#F23C3C] text-white rounded-full flex items-center justify-center font-sans text-xs font-bold shadow-lg hover:scale-110 active:scale-95 transition-transform z-40 cursor-pointer"
                                         title="Delete field"
                                     >
                                         ×
