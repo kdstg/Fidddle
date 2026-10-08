@@ -3,7 +3,7 @@ import Image from "next/image";
 import * as pdfjs from "pdfjs-dist";
 
 // Configure worker for PDF rendering
-pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
+pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.js`;
 
 export interface SignatureField {
     id: string;

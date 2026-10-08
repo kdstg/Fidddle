@@ -6,6 +6,7 @@ import { PageThumbnailSidebar } from "./PageThumbnailSidebar";
 import { DocumentCanvas, SignatureField } from "./DocumentCanvas";
 
 interface RecipientWorkspaceProps {
+    file?: File | string | null;
     documentName?: string;
     senderName?: string;
     senderCompany?: string;
@@ -16,6 +17,7 @@ interface RecipientWorkspaceProps {
 }
 
 export const RecipientWorkspace: React.FC<RecipientWorkspaceProps> = ({
+    file,
     documentName = "Contract-Agreement-2026.pdf",
     senderName = "Alex Rivera",
     senderCompany = "Acme Corp",
@@ -37,7 +39,7 @@ export const RecipientWorkspace: React.FC<RecipientWorkspaceProps> = ({
     const completedFieldsCount = fields.filter((f) => f.isSigned).length;
     const activeField = fields[activeFieldIndex];
 
-    /* Auto-sync thumbnail/canvas page with target field */
+    /* Sync thumbnail/canvas page with active target field */
     useEffect(() => {
         if (isSigning && activeField) {
             setCurrentPage(activeField.page);
@@ -80,7 +82,7 @@ export const RecipientWorkspace: React.FC<RecipientWorkspaceProps> = ({
 
         if (onSignField) onSignField(targetId);
 
-        // Auto advance to next unsigned field
+        // Auto-advance to next unsigned field
         const nextUnsigned = fields.findIndex(
             (f, idx) => idx > activeFieldIndex && !f.isSigned
         );
@@ -109,14 +111,17 @@ export const RecipientWorkspace: React.FC<RecipientWorkspaceProps> = ({
                 onClick={(e) => e.stopPropagation()}
                 className="relative w-[1214.4px] h-[703px] bg-[#202020] border border-[#373737] rounded-[24px] flex overflow-hidden shadow-2xl cursor-default"
             >
+                {/* Left Thumbnail Sidebar */}
                 <PageThumbnailSidebar
                     currentPage={currentPage}
                     onSelectPage={setCurrentPage}
                 />
 
+                {/* Main Content Area */}
                 <div className="flex-1 h-full flex flex-col justify-between px-[40px] py-6 relative">
                     {/* Header */}
                     <header className="w-full grid grid-cols-[auto_1fr_auto] items-center gap-4 z-10">
+                        {/* Zoom Controls */}
                         <div className="flex items-center gap-3 shrink-0">
                             <IconButton
                                 size="lg"
@@ -149,6 +154,7 @@ export const RecipientWorkspace: React.FC<RecipientWorkspaceProps> = ({
                             />
                         </div>
 
+                        {/* Document Title & Subtitle */}
                         <div className="flex flex-col items-center justify-center text-center px-4 overflow-hidden">
                             <h1
                                 className="font-sans font-normal text-[20px] text-white tracking-tight max-w-[480px] truncate"
@@ -168,6 +174,7 @@ export const RecipientWorkspace: React.FC<RecipientWorkspaceProps> = ({
                     <main className="relative flex-1 my-2 overflow-hidden">
                         <DocumentCanvas
                             mode="recipient"
+                            file={file}
                             currentPage={currentPage}
                             zoomLevel={zoomLevel}
                             fields={fields}
@@ -180,7 +187,7 @@ export const RecipientWorkspace: React.FC<RecipientWorkspaceProps> = ({
                         />
                     </main>
 
-                    {/* Bottom Toolbar */}
+                    {/* Bottom Toolbar States */}
                     {!isSigning ? (
                         /* STATE A: Review Mode */
                         <div className="w-full flex items-center justify-end gap-[16px] z-10">
