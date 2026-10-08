@@ -1,116 +1,22 @@
-import React, { useRef, useState, useEffect } from "react";
+/* src/components/editor/PageThumbnailSidebar.tsx */
+import React, { useState, useEffect, useRef } from "react";
 import * as pdfjs from "pdfjs-dist";
+
+if (typeof window !== "undefined" && !pdfjs.GlobalWorkerOptions.workerSrc) {
+    pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjs.version || "4.10.38"}/build/pdf.worker.min.mjs`;
+}
 
 interface PageThumbnailSidebarProps {
     file?: File | string | null;
     currentPage: number;
-    totalPages?: number;
+    totalPages: number;
     onSelectPage: (page: number) => void;
 }
-
-/* Sub-component to render an individual thumbnail canvas */
-const ThumbnailCard: React.FC<{
-    pdfDoc: pdfjs.PDFDocumentProxy | null;
-    imageUrl: string | null;
-    pageNumber: number;
-    isActive: boolean;
-}> = ({ pdfDoc, imageUrl, pageNumber, isActive }) => {
-    const canvasRef = useRef<HTMLCanvasElement>(null);
-
-    useEffect(() => {
-        if (!pdfDoc || !canvasRef.current) return;
-
-        let isCancelled = false;
-        let renderTask: any = null;
-
-        const renderThumb = async () => {
-            try {
-                const page = await pdfDoc.getPage(pageNumber);
-                if (isCancelled) return;
-
-                const canvas = canvasRef.current;
-                if (!canvas) return;
-
-                const context = canvas.getContext("2d");
-                if (!context) return;
-
-                const unscaledViewport = page.getViewport({ scale: 1.0, rotation: 0 });
-                const targetWidth = 160;
-                const scale = targetWidth / unscaledViewport.width;
-                const viewport = page.getViewport({ scale, rotation: 0 });
-
-                canvas.width = viewport.width;
-                canvas.height = viewport.height;
-
-                renderTask = page.render({
-                    canvasContext: context,
-                    viewport,
-                } as any);
-
-                await renderTask.promise;
-            } catch (err: any) {
-                if (err?.name !== "RenderingCancelledException") {
-                    console.error("Thumbnail render error:", err);
-                }
-            }
-        };
-
-        renderThumb();
-
-        return () => {
-            isCancelled = true;
-            if (renderTask) {
-                renderTask.cancel();
-            }
-        };
-    }, [pdfDoc, pageNumber]);
-
-    /* 4px stroke directly around thumbnail edge */
-    const activeClasses = isActive
-        ? "ring-4 ring-[#3C70F2] border-transparent scale-[1.02]"
-        : "border border-black/10 opacity-60 group-hover:opacity-100";
-
-    if (pdfDoc) {
-        return (
-            <canvas
-                ref={canvasRef}
-                className={`w-[80px] h-[113px] object-cover bg-white rounded-[3px] shadow-md transition-all duration-150 ${activeClasses}`}
-            />
-        );
-    }
-
-    if (imageUrl) {
-        return (
-            <img
-                src={imageUrl}
-                alt={`Page ${pageNumber}`}
-                className={`w-[80px] h-[113px] object-cover bg-white rounded-[3px] shadow-md transition-all duration-150 ${activeClasses}`}
-            />
-        );
-    }
-
-    /* Skeleton Fallback */
-    return (
-        <div
-            className={`w-[80px] h-[113px] bg-white rounded-[3px] shadow-md flex flex-col justify-between p-2 overflow-hidden transition-all duration-150 ${activeClasses}`}
-        >
-            <div className="space-y-1">
-                <div className="w-1/2 h-1 bg-black/15 rounded" />
-                <div className="w-full h-1 bg-black/10 rounded" />
-                <div className="w-full h-1 bg-black/10 rounded" />
-                <div className="w-3/4 h-1 bg-black/10 rounded" />
-            </div>
-            <div className="w-full text-center text-[7px] text-black/20 font-sans border-t border-black/5 pt-1">
-                {pageNumber}
-            </div>
-        </div>
-    );
-};
 
 export const PageThumbnailSidebar: React.FC<PageThumbnailSidebarProps> = ({
     file,
     currentPage,
-    totalPages = 1,
+    totalPages,
     onSelectPage,
 }) => {
     const [pdfDoc, setPdfDoc] = useState<pdfjs.PDFDocumentProxy | null>(null);
@@ -124,8 +30,17 @@ export const PageThumbnailSidebar: React.FC<PageThumbnailSidebarProps> = ({
         }
 
         if (typeof file === "string") {
-            if (file.endsWith(".pdf") || file.includes("application/pdf")) {
-                pdfjs.getDocument(file).promise.then(setPdfDoc).catch(console.error);
+            if (
+                file.endsWith(".pdf") ||
+                file.includes("application/pdf") ||
+                file.startsWith("/")
+            ) {
+                pdfjs
+                    .getDocument({ url: file })
+                    .promise.then(setPdfDoc)
+                    .catch((err) => {
+                        console.warn("Could not load PDF from URL in sidebar:", err);
+                    });
             } else {
                 setImageUrl(file);
             }
@@ -144,51 +59,130 @@ export const PageThumbnailSidebar: React.FC<PageThumbnailSidebarProps> = ({
             reader.onload = async (e) => {
                 const typedArray = new Uint8Array(e.target?.result as ArrayBuffer);
                 try {
-                    const doc = await pdfjs.getDocument({ data: typedArray }).promise;
-                    setPdfDoc(doc);
+                    const loadedPdf = await pdfjs.getDocument({ data: typedArray }).promise;
+                    setPdfDoc(loadedPdf);
                 } catch (err) {
-                    console.error("Sidebar PDF load error:", err);
+                    console.error("Sidebar PDF parse error:", err);
                 }
             };
             reader.readAsArrayBuffer(file);
         }
     }, [file]);
 
-    const pages = Array.from({ length: totalPages }, (_, i) => i + 1);
+    const pageNumbers = Array.from(
+        { length: Math.max(1, totalPages) },
+        (_, i) => i + 1
+    );
 
     return (
-        <aside className="w-[180px] h-full bg-[#1A1A1A] border-r border-[#373737] p-4 flex flex-col gap-4 overflow-y-auto [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar]:h-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-[#373737] [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-[#505050]">
-            <h2 className="font-sans font-medium text-xs text-white/70 uppercase tracking-wider mb-1">
-                Pages ({totalPages})
-            </h2>
+        <aside className="w-[180px] h-full bg-[#1A1A1A] border-r border-[#373737] p-4 flex flex-col gap-4 overflow-y-auto shrink-0 select-none [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-thumb]:bg-[#373737] [&::-webkit-scrollbar-thumb]:rounded-full">
+            <div className="text-xs font-sans font-medium text-white/60 tracking-wider uppercase px-1">
+                Pages
+            </div>
 
-            <div className="flex flex-col gap-4 items-center">
-                {pages.map((page) => {
-                    const isActive = page === currentPage;
-
+            <div className="flex flex-col gap-4">
+                {pageNumbers.map((pageNum) => {
+                    const isSelected = pageNum === currentPage;
                     return (
                         <button
-                            key={page}
-                            onClick={() => onSelectPage(page)}
-                            className="group flex flex-col items-center gap-2 cursor-pointer p-1"
+                            key={pageNum}
+                            onClick={() => onSelectPage(pageNum)}
+                            className="group relative w-full flex flex-col items-center gap-2 p-1.5 rounded-[12px] transition-colors cursor-pointer hover:bg-[#222222]"
                         >
-                            <ThumbnailCard
-                                pdfDoc={pdfDoc}
-                                imageUrl={imageUrl}
-                                pageNumber={page}
-                                isActive={isActive}
-                            />
+                            {/* Page Thumbnail Box (Blue stroke on active) */}
+                            <div
+                                className={`
+                  relative w-full aspect-[1/1.4] bg-white rounded-[6px] overflow-hidden shadow-md flex items-center justify-center transition-all
+                  ${isSelected
+                                        ? "ring-2 ring-[#3C70F2] ring-offset-2 ring-offset-[#1A1A1A]"
+                                        : "border border-black/10"
+                                    }
+                `}
+                            >
+                                {pdfDoc ? (
+                                    <ThumbnailCanvas pdfDoc={pdfDoc} pageNum={pageNum} />
+                                ) : imageUrl ? (
+                                    <img
+                                        src={imageUrl}
+                                        alt={`Page ${pageNum}`}
+                                        className="w-full h-full object-cover"
+                                    />
+                                ) : (
+                                    <div className="w-full h-full p-2 flex flex-col justify-between text-black/20 font-serif text-[6px]">
+                                        <div className="space-y-1">
+                                            <div className="w-1/2 h-1 bg-black/10 rounded" />
+                                            <div className="w-full h-0.5 bg-black/5 rounded" />
+                                            <div className="w-full h-0.5 bg-black/5 rounded" />
+                                            <div className="w-3/4 h-0.5 bg-black/5 rounded" />
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
 
+                            {/* Page Number Label */}
                             <span
-                                className={`font-sans text-xs transition-colors duration-150 ${isActive ? "text-[#3C70F2] font-semibold" : "text-white/60 group-hover:text-white"
+                                className={`font-sans text-xs font-medium transition-colors ${isSelected ? "text-[#3C70F2]" : "text-white/50 group-hover:text-white"
                                     }`}
                             >
-                                {page}
+                                {pageNum}
                             </span>
                         </button>
                     );
                 })}
             </div>
         </aside>
+    );
+};
+
+const ThumbnailCanvas: React.FC<{
+    pdfDoc: pdfjs.PDFDocumentProxy;
+    pageNum: number;
+}> = ({ pdfDoc, pageNum }) => {
+    const canvasRef = useRef<HTMLCanvasElement>(null);
+
+    useEffect(() => {
+        let renderTask: any = null;
+        let isCancelled = false;
+
+        const renderThumbnail = async () => {
+            try {
+                if (pageNum > pdfDoc.numPages) return;
+                const page = await pdfDoc.getPage(pageNum);
+                if (isCancelled || !canvasRef.current) return;
+
+                const canvas = canvasRef.current;
+                const context = canvas.getContext("2d");
+                if (!context) return;
+
+                const viewport = page.getViewport({ scale: 0.3 });
+                canvas.width = viewport.width;
+                canvas.height = viewport.height;
+
+                renderTask = page.render({
+                    canvasContext: context,
+                    viewport: viewport,
+                } as any);
+
+                await renderTask.promise;
+            } catch (err: any) {
+                if (err?.name !== "RenderingCancelledException") {
+                    console.error("Thumbnail render error:", err);
+                }
+            }
+        };
+
+        renderThumbnail();
+
+        return () => {
+            isCancelled = true;
+            if (renderTask) renderTask.cancel();
+        };
+    }, [pdfDoc, pageNum]);
+
+    return (
+        <canvas
+            ref={canvasRef}
+            className="w-full h-full object-contain pointer-events-none"
+        />
     );
 };
