@@ -3,6 +3,7 @@ import Image from "next/image";
 import { IconButton } from "@/components/ui/IconButton";
 import { ConfirmCheckButton } from "@/components/ui/ConfirmCheckButton";
 import { PageThumbnailSidebar } from "./PageThumbnailSidebar";
+import { DocumentCanvas, SignatureField } from "./DocumentCanvas";
 
 interface Collaborator {
     id: string;
@@ -13,41 +14,66 @@ interface Collaborator {
 interface SenderWorkspaceProps {
     documentName?: string;
     collaborators?: Collaborator[];
-    onAddSignatureBlock?: () => void;
-    onConfirm?: () => void;
+    initialFields?: SignatureField[];
+    onConfirm?: (fields: SignatureField[]) => void;
     onClose?: () => void;
 }
 
 export const SenderWorkspace: React.FC<SenderWorkspaceProps> = ({
     documentName = "Contract-Agreement-2026.pdf",
     collaborators = [],
-    onAddSignatureBlock,
+    initialFields = [],
     onConfirm,
     onClose,
 }) => {
     const [currentPage, setCurrentPage] = useState(1);
-    const [placedBlocksCount, setPlacedBlocksCount] = useState(0);
-    const [activeBlockIndex, setActiveBlockIndex] = useState<number | null>(null);
+    const [zoomLevel, setZoomLevel] = useState(100);
+    const [fields, setFields] = useState<SignatureField[]>(initialFields);
+    const [activeFieldIndex, setActiveFieldIndex] = useState<number | null>(null);
 
+    /* Zoom Handlers */
+    const handleZoomOut = () => setZoomLevel((prev) => Math.max(50, prev - 10));
+    const handleZoomIn = () => setZoomLevel((prev) => Math.min(200, prev + 10));
+
+    /* Block Placement & Navigation */
     const handleAddBlock = () => {
-        setPlacedBlocksCount((prev) => {
-            const newCount = prev + 1;
-            setActiveBlockIndex(newCount);
-            return newCount;
-        });
-        if (onAddSignatureBlock) onAddSignatureBlock();
+        const newField: SignatureField = {
+            id: `field-${Date.now()}`,
+            page: currentPage,
+            x: 32,
+            y: 65,
+            label: `Signature ${fields.length + 1}`,
+            isSigned: false,
+        };
+
+        const nextFields = [...fields, newField];
+        setFields(nextFields);
+        setActiveFieldIndex(nextFields.length - 1);
     };
 
     const handlePrevBlock = () => {
-        if (placedBlocksCount === 0) return;
-        setActiveBlockIndex((prev) => (prev === null || prev <= 1 ? placedBlocksCount : prev - 1));
+        if (fields.length === 0) return;
+        setActiveFieldIndex((prev) =>
+            prev === null || prev <= 0 ? fields.length - 1 : prev - 1
+        );
     };
 
     const handleNextBlock = () => {
-        if (placedBlocksCount === 0) return;
-        setActiveBlockIndex((prev) => (prev === null || prev >= placedBlocksCount ? 1 : prev + 1));
+        if (fields.length === 0) return;
+        setActiveFieldIndex((prev) =>
+            prev === null || prev >= fields.length - 1 ? 0 : prev + 1
+        );
     };
 
+    /* Sync current canvas page with selected block */
+    const handleSelectField = (index: number) => {
+        setActiveFieldIndex(index);
+        if (fields[index]) {
+            setCurrentPage(fields[index].page);
+        }
+    };
+
+    /* Backdrop Dismiss */
     const handleBackdropPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
         if (e.target === e.currentTarget && onClose) {
             e.stopPropagation();
@@ -73,16 +99,50 @@ export const SenderWorkspace: React.FC<SenderWorkspaceProps> = ({
                 />
 
                 <div className="flex-1 h-full flex flex-col justify-between px-[40px] py-6 relative">
-                    {/* Header Bar */}
-                    <header className="w-full flex items-center justify-between z-10 gap-4">
-                        <h1
-                            className="font-sans font-normal text-[20px] text-white tracking-tight max-w-[550px] truncate"
-                            title={documentName}
-                        >
-                            {documentName}
-                        </h1>
+                    {/* Header */}
+                    <header className="w-full grid grid-cols-[auto_1fr_auto] items-center gap-4 z-10">
+                        <div className="flex items-center gap-3 shrink-0">
+                            <IconButton
+                                size="lg"
+                                variant="solid"
+                                onClick={handleZoomOut}
+                                icon={
+                                    <Image
+                                        src="/icon-minus.svg"
+                                        alt="Zoom Out"
+                                        width={24}
+                                        height={24}
+                                    />
+                                }
+                            />
+                            <span className="font-sans font-normal text-[20px] text-white min-w-[55px] text-center">
+                                {zoomLevel}%
+                            </span>
+                            <IconButton
+                                size="lg"
+                                variant="solid"
+                                onClick={handleZoomIn}
+                                icon={
+                                    <Image
+                                        src="/icon-plus.svg"
+                                        alt="Zoom In"
+                                        width={24}
+                                        height={24}
+                                    />
+                                }
+                            />
+                        </div>
 
-                        <div className="flex items-center gap-4 shrink-0">
+                        <div className="flex flex-col items-center justify-center text-center px-4 overflow-hidden">
+                            <h1
+                                className="font-sans font-normal text-[20px] text-white tracking-tight max-w-[480px] truncate"
+                                title={documentName}
+                            >
+                                {documentName}
+                            </h1>
+                        </div>
+
+                        <div className="flex items-center gap-4 shrink-0 justify-end min-w-[140px]">
                             {collaborators.length > 0 && (
                                 <div className="flex items-center -space-x-2">
                                     {collaborators.slice(0, 3).map((collab) => (
@@ -116,49 +176,53 @@ export const SenderWorkspace: React.FC<SenderWorkspaceProps> = ({
                         </div>
                     </header>
 
-                    {/* PDF Viewport */}
-                    <main className="relative flex-1 my-2 flex items-center justify-center">
-                        <p className="font-sans text-sm text-white/20 select-none pointer-events-none">
-                            {placedBlocksCount > 0
-                                ? `Focused Block: ${activeBlockIndex} / ${placedBlocksCount}`
-                                : "PDF Page View Area"}
-                        </p>
+                    {/* Canvas Viewport */}
+                    <main className="relative flex-1 my-2 overflow-hidden">
+                        <DocumentCanvas
+                            mode="sender"
+                            currentPage={currentPage}
+                            zoomLevel={zoomLevel}
+                            fields={fields}
+                            activeFieldIndex={activeFieldIndex}
+                            onFieldSelect={handleSelectField}
+                            onFieldsChange={(updated) => setFields(updated)}
+                        />
                     </main>
 
                     {/* Bottom Toolbar */}
                     <div className="w-full bg-[#202020] border border-[#373737] rounded-full px-4 py-2 flex items-center justify-between z-10 shadow-lg">
                         <div className="flex items-center gap-[24px]">
                             <span className="font-sans font-normal text-[20px] text-white whitespace-nowrap">
-                                {placedBlocksCount} block{placedBlocksCount === 1 ? "" : "s"} added
+                                {fields.length} block{fields.length === 1 ? "" : "s"} added
                             </span>
 
                             <div className="flex items-center gap-[16px]">
                                 <IconButton
                                     size="lg"
-                                    variant="glass"
-                                    disabled={placedBlocksCount === 0}
+                                    variant="solid"
+                                    disabled={fields.length === 0}
                                     icon={
                                         <Image
                                             src="/icon-arrow-left.svg"
                                             alt="Previous Block"
                                             width={24}
                                             height={24}
-                                            className={placedBlocksCount === 0 ? "opacity-30" : "opacity-100"}
+                                            className={fields.length === 0 ? "opacity-30" : "opacity-100"}
                                         />
                                     }
                                     onClick={handlePrevBlock}
                                 />
                                 <IconButton
                                     size="lg"
-                                    variant="glass"
-                                    disabled={placedBlocksCount === 0}
+                                    variant="solid"
+                                    disabled={fields.length === 0}
                                     icon={
                                         <Image
                                             src="/icon-arrow-right.svg"
                                             alt="Next Block"
                                             width={24}
                                             height={24}
-                                            className={placedBlocksCount === 0 ? "opacity-30" : "opacity-100"}
+                                            className={fields.length === 0 ? "opacity-30" : "opacity-100"}
                                         />
                                     }
                                     onClick={handleNextBlock}
@@ -187,7 +251,7 @@ export const SenderWorkspace: React.FC<SenderWorkspaceProps> = ({
                                 <span>Add Signature Block</span>
                             </button>
 
-                            <ConfirmCheckButton onClick={onConfirm} />
+                            <ConfirmCheckButton onClick={() => onConfirm && onConfirm(fields)} />
                         </div>
                     </div>
                 </div>
