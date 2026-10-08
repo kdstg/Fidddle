@@ -10,7 +10,7 @@ interface Collaborator {
     avatarUrl?: string;
 }
 
-interface DocumentWorkspaceProps {
+interface SenderWorkspaceProps {
     documentName?: string;
     collaborators?: Collaborator[];
     onAddSignatureBlock?: () => void;
@@ -18,7 +18,7 @@ interface DocumentWorkspaceProps {
     onClose?: () => void;
 }
 
-export const DocumentWorkspace: React.FC<DocumentWorkspaceProps> = ({
+export const SenderWorkspace: React.FC<SenderWorkspaceProps> = ({
     documentName = "Contract-Agreement-2026.pdf",
     collaborators = [],
     onAddSignatureBlock,
@@ -27,14 +27,28 @@ export const DocumentWorkspace: React.FC<DocumentWorkspaceProps> = ({
 }) => {
     const [currentPage, setCurrentPage] = useState(1);
     const [placedBlocksCount, setPlacedBlocksCount] = useState(0);
+    const [activeBlockIndex, setActiveBlockIndex] = useState<number | null>(null);
 
     const handleAddBlock = () => {
-        setPlacedBlocksCount((prev) => prev + 1);
+        setPlacedBlocksCount((prev) => {
+            const newCount = prev + 1;
+            setActiveBlockIndex(newCount);
+            return newCount;
+        });
         if (onAddSignatureBlock) onAddSignatureBlock();
     };
 
+    const handlePrevBlock = () => {
+        if (placedBlocksCount === 0) return;
+        setActiveBlockIndex((prev) => (prev === null || prev <= 1 ? placedBlocksCount : prev - 1));
+    };
+
+    const handleNextBlock = () => {
+        if (placedBlocksCount === 0) return;
+        setActiveBlockIndex((prev) => (prev === null || prev >= placedBlocksCount ? 1 : prev + 1));
+    };
+
     const handleBackdropPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
-        // Check if the click target is directly the backdrop itself, not its children
         if (e.target === e.currentTarget && onClose) {
             e.stopPropagation();
             e.preventDefault();
@@ -43,27 +57,23 @@ export const DocumentWorkspace: React.FC<DocumentWorkspaceProps> = ({
     };
 
     return (
-        /* Fullscreen Modal Overlay */
         <div
             onPointerDown={handleBackdropPointerDown}
             onClick={(e) => e.stopPropagation()}
             className="fixed inset-0 z-50 bg-black/40 backdrop-blur-md flex items-center justify-center p-6 sm:p-8 select-none cursor-pointer"
         >
-            {/* Center 1214.4px x 703px Main Workspace Card */}
             <div
                 onPointerDown={(e) => e.stopPropagation()}
                 onClick={(e) => e.stopPropagation()}
                 className="relative w-[1214.4px] h-[703px] bg-[#202020] border border-[#373737] rounded-[24px] flex overflow-hidden shadow-2xl cursor-default"
             >
-                {/* Left Page Sidebar (242.4px) */}
                 <PageThumbnailSidebar
                     currentPage={currentPage}
                     onSelectPage={setCurrentPage}
                 />
 
-                {/* Right Main PDF Canvas Workspace */}
                 <div className="flex-1 h-full flex flex-col justify-between px-[40px] py-6 relative">
-                    {/* Top Header Bar inside Card */}
+                    {/* Header Bar */}
                     <header className="w-full flex items-center justify-between z-10 gap-4">
                         <h1
                             className="font-sans font-normal text-[20px] text-white tracking-tight max-w-[550px] truncate"
@@ -106,14 +116,16 @@ export const DocumentWorkspace: React.FC<DocumentWorkspaceProps> = ({
                         </div>
                     </header>
 
-                    {/* Main PDF Canvas Viewport */}
+                    {/* PDF Viewport */}
                     <main className="relative flex-1 my-2 flex items-center justify-center">
                         <p className="font-sans text-sm text-white/20 select-none pointer-events-none">
-                            PDF Page View Area
+                            {placedBlocksCount > 0
+                                ? `Focused Block: ${activeBlockIndex} / ${placedBlocksCount}`
+                                : "PDF Page View Area"}
                         </p>
                     </main>
 
-                    {/* Bottom Floating Action Toolbar */}
+                    {/* Bottom Toolbar */}
                     <div className="w-full bg-[#202020] border border-[#373737] rounded-full px-4 py-2 flex items-center justify-between z-10 shadow-lg">
                         <div className="flex items-center gap-[24px]">
                             <span className="font-sans font-normal text-[20px] text-white whitespace-nowrap">
@@ -124,28 +136,32 @@ export const DocumentWorkspace: React.FC<DocumentWorkspaceProps> = ({
                                 <IconButton
                                     size="lg"
                                     variant="glass"
+                                    disabled={placedBlocksCount === 0}
                                     icon={
                                         <Image
                                             src="/icon-arrow-left.svg"
-                                            alt="Previous"
+                                            alt="Previous Block"
                                             width={24}
                                             height={24}
+                                            className={placedBlocksCount === 0 ? "opacity-30" : "opacity-100"}
                                         />
                                     }
-                                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                                    onClick={handlePrevBlock}
                                 />
                                 <IconButton
                                     size="lg"
                                     variant="glass"
+                                    disabled={placedBlocksCount === 0}
                                     icon={
                                         <Image
                                             src="/icon-arrow-right.svg"
-                                            alt="Next"
+                                            alt="Next Block"
                                             width={24}
                                             height={24}
+                                            className={placedBlocksCount === 0 ? "opacity-30" : "opacity-100"}
                                         />
                                     }
-                                    onClick={() => setCurrentPage((p) => p + 1)}
+                                    onClick={handleNextBlock}
                                 />
                             </div>
                         </div>

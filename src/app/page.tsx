@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import { LandingPage } from "@/components/landing/LandingPage";
-import { DocumentWorkspace } from "@/components/editor/DocumentWorkspace";
+import { RecipientWorkspace } from "@/components/editor/RecipientWorkspace";
 
 export default function Home() {
   const [file, setFile] = useState<File | null>(null);
@@ -19,7 +19,7 @@ export default function Home() {
       />
 
       {file && (
-        <DocumentWorkspace
+        <RecipientWorkspace
           documentName={file.name}
           onClose={handleClose}
           onConfirm={handleClose}
