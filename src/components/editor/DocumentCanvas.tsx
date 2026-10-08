@@ -1,5 +1,9 @@
-import React, { useRef, useState } from "react";
+import React, { useRef, useState, useEffect } from "react";
 import Image from "next/image";
+import * as pdfjs from "pdfjs-dist";
+
+// Configure worker for PDF rendering
+pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
 
 export interface SignatureField {
     id: string;
@@ -16,10 +20,12 @@ interface DocumentCanvasProps {
     currentPage: number;
     zoomLevel: number;
     fields: SignatureField[];
+    file?: File | string | null;
     activeFieldIndex?: number | null;
     onFieldSelect?: (index: number) => void;
     onFieldsChange?: (fields: SignatureField[]) => void;
     onSignFieldClick?: (fieldId: string) => void;
+    onTotalPagesChange?: (pages: number) => void;
 }
 
 export const DocumentCanvas: React.FC<DocumentCanvasProps> = ({
@@ -27,17 +33,120 @@ export const DocumentCanvas: React.FC<DocumentCanvasProps> = ({
     currentPage,
     zoomLevel,
     fields,
+    file,
     activeFieldIndex,
     onFieldSelect,
     onFieldsChange,
     onSignFieldClick,
+    onTotalPagesChange,
 }) => {
     const paperRef = useRef<HTMLDivElement>(null);
-    const [draggingId, setDraggingId] = useState<string | null>(null);
-    const dragOffsetRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+    const pdfCanvasRef = useRef<HTMLCanvasElement>(null);
 
+    const [draggingId, setDraggingId] = useState<string | null>(null);
+    const [imageUrl, setImageUrl] = useState<string | null>(null);
+    const [pdfDoc, setPdfDoc] = useState<pdfjs.PDFDocumentProxy | null>(null);
+    const [isLoading, setIsLoading] = useState(false);
+
+    const dragOffsetRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
     const currentPageFields = fields.filter((f) => f.page === currentPage);
 
+    /* ================= FILE LOADING LOGIC ================= */
+    useEffect(() => {
+        if (!file) {
+            setImageUrl(null);
+            setPdfDoc(null);
+            return;
+        }
+
+        if (typeof file === "string") {
+            if (file.endsWith(".pdf") || file.includes("application/pdf")) {
+                loadPdfFromUrl(file);
+            } else {
+                setImageUrl(file);
+            }
+            return;
+        }
+
+        if (file.type.startsWith("image/")) {
+            const url = URL.createObjectURL(file);
+            setImageUrl(url);
+            setPdfDoc(null);
+            return () => URL.revokeObjectURL(url);
+        }
+
+        if (file.type === "application/pdf") {
+            setIsLoading(true);
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+                const typedArray = new Uint8Array(e.target?.result as ArrayBuffer);
+                try {
+                    const loadedPdf = await pdfjs.getDocument(typedArray).promise;
+                    setPdfDoc(loadedPdf);
+                    setImageUrl(null);
+                    if (onTotalPagesChange) onTotalPagesChange(loadedPdf.numPages);
+                } catch (err) {
+                    console.error("Error loading PDF:", err);
+                } finally {
+                    setIsLoading(false);
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+    }, [file]);
+
+    const loadPdfFromUrl = async (url: string) => {
+        try {
+            setIsLoading(true);
+            const loadedPdf = await pdfjs.getDocument(url).promise;
+            setPdfDoc(loadedPdf);
+            if (onTotalPagesChange) onTotalPagesChange(loadedPdf.numPages);
+        } catch (err) {
+            console.error("Failed to load PDF URL:", err);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    /* ================= RENDER PDF PAGE TO CANVAS ================= */
+    useEffect(() => {
+        if (!pdfDoc || !pdfCanvasRef.current) return;
+
+        let isRenderCancelled = false;
+
+        const renderPage = async () => {
+            try {
+                const pageNumber = Math.min(Math.max(1, currentPage), pdfDoc.numPages);
+                const page = await pdfDoc.getPage(pageNumber);
+                if (isRenderCancelled) return;
+
+                const viewport = page.getViewport({ scale: 1.5 });
+                const canvas = pdfCanvasRef.current;
+                if (!canvas) return;
+
+                const context = canvas.getContext("2d");
+                if (!context) return;
+
+                canvas.height = viewport.height;
+                canvas.width = viewport.width;
+
+                await page.render({
+                    canvasContext: context,
+                    viewport,
+                }).promise;
+            } catch (err) {
+                console.error("Render page error:", err);
+            }
+        };
+
+        renderPage();
+
+        return () => {
+            isRenderCancelled = true;
+        };
+    }, [pdfDoc, currentPage]);
+
+    /* ================= SENDER DRAG HANDLERS ================= */
     const handlePointerDown = (
         e: React.PointerEvent<HTMLDivElement>,
         field: SignatureField
@@ -90,35 +199,58 @@ export const DocumentCanvas: React.FC<DocumentCanvasProps> = ({
 
     return (
         <div className="relative w-full h-full flex items-center justify-center overflow-auto p-8 select-none [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar]:h-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-[#373737] [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-[#505050]">
-            {/* Scalable Canvas Sheet Container */}
             <div
                 style={{ transform: `scale(${zoomLevel / 100})` }}
                 className="transition-transform duration-200 ease-out flex items-center justify-center"
             >
-                {/* Paper Document Container */}
+                {/* Document Sheet Container */}
                 <div
                     ref={paperRef}
-                    className="relative w-[500px] h-[707px] bg-white rounded-[4px] shadow-2xl flex flex-col justify-between p-8 text-black/80 font-serif"
+                    className="relative w-[500px] h-[707px] bg-white rounded-[4px] shadow-2xl flex flex-col justify-between overflow-hidden cursor-default"
                 >
-                    {/* Mock PDF Document Preview */}
-                    <div className="space-y-4">
-                        <div className="w-1/3 h-4 bg-black/10 rounded" />
-                        <div className="w-full h-2.5 bg-black/5 rounded" />
-                        <div className="w-full h-2.5 bg-black/5 rounded" />
-                        <div className="w-4/5 h-2.5 bg-black/5 rounded" />
-
-                        <div className="pt-6 space-y-2">
-                            <div className="w-full h-2 bg-black/5 rounded" />
-                            <div className="w-full h-2 bg-black/5 rounded" />
-                            <div className="w-3/4 h-2 bg-black/5 rounded" />
+                    {/* Loading Overlay */}
+                    {isLoading && (
+                        <div className="absolute inset-0 z-30 bg-white/80 backdrop-blur-sm flex items-center justify-center">
+                            <span className="font-sans text-xs text-black/50 animate-pulse">
+                                Rendering document...
+                            </span>
                         </div>
-                    </div>
+                    )}
 
-                    <div className="text-center font-sans text-[11px] text-black/30 border-t border-black/5 pt-4">
-                        Page {currentPage}
-                    </div>
+                    {/* RENDER MODE A: PDF Canvas */}
+                    {pdfDoc ? (
+                        <canvas
+                            ref={pdfCanvasRef}
+                            className="w-full h-full object-contain pointer-events-none"
+                        />
+                    ) : imageUrl ? (
+                        /* RENDER MODE B: Image File */
+                        <img
+                            src={imageUrl}
+                            alt="Document Page"
+                            className="w-full h-full object-contain pointer-events-none"
+                        />
+                    ) : (
+                        /* RENDER MODE C: Fallback Wireframe */
+                        <div className="w-full h-full p-8 flex flex-col justify-between text-black/80 font-serif">
+                            <div className="space-y-4">
+                                <div className="w-1/3 h-4 bg-black/10 rounded" />
+                                <div className="w-full h-2.5 bg-black/5 rounded" />
+                                <div className="w-full h-2.5 bg-black/5 rounded" />
+                                <div className="w-4/5 h-2.5 bg-black/5 rounded" />
+                                <div className="pt-6 space-y-2">
+                                    <div className="w-full h-2 bg-black/5 rounded" />
+                                    <div className="w-full h-2 bg-black/5 rounded" />
+                                    <div className="w-3/4 h-2 bg-black/5 rounded" />
+                                </div>
+                            </div>
+                            <div className="text-center font-sans text-[11px] text-black/30 border-t border-black/5 pt-4">
+                                Page {currentPage}
+                            </div>
+                        </div>
+                    )}
 
-                    {/* Overlay Signature Fields */}
+                    {/* ================= OVERLAY SIGNATURE FIELDS ================= */}
                     {currentPageFields.map((field) => {
                         const globalIndex = fields.findIndex((f) => f.id === field.id);
                         const isActive = activeFieldIndex === globalIndex;
