@@ -7,6 +7,8 @@ export interface SignatureField {
     page: number;
     x: number; // percentage (0 - 100)
     y: number; // percentage (0 - 100)
+    width?: number; // percentage (0 - 100)
+    height?: number; // percentage (0 - 100)
     label?: string;
     isSigned: boolean;
     signatureValue?: string;
@@ -47,11 +49,29 @@ export const DocumentCanvas: React.FC<DocumentCanvasProps> = ({
     const pdfCanvasRef = useRef<HTMLCanvasElement>(null);
 
     const [draggingId, setDraggingId] = useState<string | null>(null);
+    const [resizingId, setResizingId] = useState<string | null>(null);
     const [imageUrl, setImageUrl] = useState<string | null>(null);
     const [pdfDoc, setPdfDoc] = useState<pdfjs.PDFDocumentProxy | null>(null);
     const [isLoading, setIsLoading] = useState(false);
 
-    // Keep live refs for drag event handlers to prevent stale closure bugs
+    // Synchronous refs for active drag and resize operations
+    const activeDragRef = useRef<{
+        fieldId: string;
+        startX: number;
+        startY: number;
+        initialFieldX: number;
+        initialFieldY: number;
+    } | null>(null);
+
+    const activeResizeRef = useRef<{
+        fieldId: string;
+        startX: number;
+        startY: number;
+        initialWidth: number;
+        initialHeight: number;
+    } | null>(null);
+
+    // Keep fresh references for window listeners
     const fieldsRef = useRef(fields);
     useEffect(() => {
         fieldsRef.current = fields;
@@ -126,7 +146,7 @@ export const DocumentCanvas: React.FC<DocumentCanvasProps> = ({
         }
     };
 
-    /* Render PDF Page with Cancellation */
+    /* Render PDF Page */
     useEffect(() => {
         if (!pdfDoc || !pdfCanvasRef.current) return;
 
@@ -173,7 +193,83 @@ export const DocumentCanvas: React.FC<DocumentCanvasProps> = ({
         };
     }, [pdfDoc, currentPage]);
 
-    /* Handle Tap-to-Place on Paper Canvas */
+    /* Global Window Listeners for Moving & Resizing */
+    useEffect(() => {
+        const handleWindowPointerMove = (e: PointerEvent) => {
+            if (!paperRef.current) return;
+            const paperRect = paperRef.current.getBoundingClientRect();
+
+            // Handle Repositioning
+            if (activeDragRef.current) {
+                const { fieldId, startX, startY, initialFieldX, initialFieldY } =
+                    activeDragRef.current;
+
+                const deltaX = e.clientX - startX;
+                const deltaY = e.clientY - startY;
+
+                const deltaXPercent = (deltaX / paperRect.width) * 100;
+                const deltaYPercent = (deltaY / paperRect.height) * 100;
+
+                let newX = initialFieldX + deltaXPercent;
+                let newY = initialFieldY + deltaYPercent;
+
+                // Bound checking
+                newX = Math.max(0, Math.min(80, newX));
+                newY = Math.max(0, Math.min(92, newY));
+
+                if (onFieldsChangeRef.current) {
+                    const updated = fieldsRef.current.map((f) =>
+                        f.id === fieldId ? { ...f, x: newX, y: newY } : f
+                    );
+                    onFieldsChangeRef.current(updated);
+                }
+            }
+
+            // Handle Container Resizing
+            if (activeResizeRef.current) {
+                const { fieldId, startX, startY, initialWidth, initialHeight } =
+                    activeResizeRef.current;
+
+                const deltaX = e.clientX - startX;
+                const deltaY = e.clientY - startY;
+
+                const deltaWPercent = (deltaX / paperRect.width) * 100;
+                const deltaHPercent = (deltaY / paperRect.height) * 100;
+
+                // Minimum dimensions: 18% width, 5% height
+                let newW = Math.max(18, Math.min(60, initialWidth + deltaWPercent));
+                let newH = Math.max(5, Math.min(30, initialHeight + deltaHPercent));
+
+                if (onFieldsChangeRef.current) {
+                    const updated = fieldsRef.current.map((f) =>
+                        f.id === fieldId ? { ...f, width: newW, height: newH } : f
+                    );
+                    onFieldsChangeRef.current(updated);
+                }
+            }
+        };
+
+        const handleWindowPointerUp = () => {
+            if (activeDragRef.current) {
+                activeDragRef.current = null;
+                setDraggingId(null);
+            }
+            if (activeResizeRef.current) {
+                activeResizeRef.current = null;
+                setResizingId(null);
+            }
+        };
+
+        window.addEventListener("pointermove", handleWindowPointerMove);
+        window.addEventListener("pointerup", handleWindowPointerUp);
+
+        return () => {
+            window.removeEventListener("pointermove", handleWindowPointerMove);
+            window.removeEventListener("pointerup", handleWindowPointerUp);
+        };
+    }, []);
+
+    /* Tap-to-Place on Paper Canvas */
     const handlePaperClick = (e: React.MouseEvent<HTMLDivElement>) => {
         if (!paperRef.current || !isPlacingBlock || !onCanvasClickToPlace) return;
 
@@ -181,65 +277,58 @@ export const DocumentCanvas: React.FC<DocumentCanvasProps> = ({
         const x = ((e.clientX - paperRect.left) / paperRect.width) * 100;
         const y = ((e.clientY - paperRect.top) / paperRect.height) * 100;
 
-        const clampedX = Math.max(2, Math.min(72, x));
+        const clampedX = Math.max(2, Math.min(70, x));
         const clampedY = Math.max(2, Math.min(90, y));
 
         onCanvasClickToPlace(clampedX, clampedY);
     };
 
-    /* Smooth Window-based Pointer Dragging */
-    const handleStartDrag = (
+    /* Start Reposition Drag */
+    const handleFieldPointerDown = (
         e: React.PointerEvent<HTMLDivElement>,
         field: SignatureField,
         globalIndex: number
     ) => {
         if (mode !== "sender" || isPlacingBlock) return;
+        if ((e.target as HTMLElement).closest("button")) return;
 
+        e.preventDefault();
         e.stopPropagation();
 
         if (onFieldSelect) {
             onFieldSelect(globalIndex);
         }
 
-        if (!paperRef.current) return;
-        const paperRect = paperRef.current.getBoundingClientRect();
-
-        // Calculate mouse offset relative to top-left of the field card
-        const fieldLeftPx = (field.x / 100) * paperRect.width;
-        const fieldTopPx = (field.y / 100) * paperRect.height;
-        const offsetX = e.clientX - paperRect.left - fieldLeftPx;
-        const offsetY = e.clientY - paperRect.top - fieldTopPx;
-
-        const targetFieldId = field.id;
-        setDraggingId(targetFieldId);
-
-        const handleWindowPointerMove = (moveEvent: PointerEvent) => {
-            if (!paperRef.current) return;
-            const rect = paperRef.current.getBoundingClientRect();
-
-            let newX = ((moveEvent.clientX - rect.left - offsetX) / rect.width) * 100;
-            let newY = ((moveEvent.clientY - rect.top - offsetY) / rect.height) * 100;
-
-            // Keep within document boundary margins
-            newX = Math.max(0, Math.min(74, newX));
-            newY = Math.max(0, Math.min(92, newY));
-
-            if (onFieldsChangeRef.current) {
-                const updated = fieldsRef.current.map((f) =>
-                    f.id === targetFieldId ? { ...f, x: newX, y: newY } : f
-                );
-                onFieldsChangeRef.current(updated);
-            }
+        activeDragRef.current = {
+            fieldId: field.id,
+            startX: e.clientX,
+            startY: e.clientY,
+            initialFieldX: field.x,
+            initialFieldY: field.y,
         };
 
-        const handleWindowPointerUp = () => {
-            setDraggingId(null);
-            window.removeEventListener("pointermove", handleWindowPointerMove);
-            window.removeEventListener("pointerup", handleWindowPointerUp);
+        setDraggingId(field.id);
+    };
+
+    /* Start Resize Drag */
+    const handleResizePointerDown = (
+        e: React.PointerEvent<HTMLButtonElement>,
+        field: SignatureField
+    ) => {
+        if (mode !== "sender") return;
+
+        e.preventDefault();
+        e.stopPropagation();
+
+        activeResizeRef.current = {
+            fieldId: field.id,
+            startX: e.clientX,
+            startY: e.clientY,
+            initialWidth: field.width || 36, // default ~180px on 500px paper
+            initialHeight: field.height || 7.3, // default ~52px on 707px paper
         };
 
-        window.addEventListener("pointermove", handleWindowPointerMove);
-        window.addEventListener("pointerup", handleWindowPointerUp);
+        setResizingId(field.id);
     };
 
     const currentPageFields = fields.filter((f) => f.page === currentPage);
@@ -301,11 +390,15 @@ export const DocumentCanvas: React.FC<DocumentCanvasProps> = ({
                         const globalIndex = fields.findIndex((f) => f.id === field.id);
                         const isActive = activeFieldIndex === globalIndex;
                         const isDraggingThis = draggingId === field.id;
+                        const isResizingThis = resizingId === field.id;
+
+                        const fieldWidth = field.width ? `${field.width}%` : "184px";
+                        const fieldHeight = field.height ? `${field.height}%` : "52px";
 
                         return (
                             <div
                                 key={field.id}
-                                onPointerDown={(e) => handleStartDrag(e, field, globalIndex)}
+                                onPointerDown={(e) => handleFieldPointerDown(e, field, globalIndex)}
                                 onClick={(e) => {
                                     e.stopPropagation();
                                     if (onFieldSelect) onFieldSelect(globalIndex);
@@ -316,47 +409,63 @@ export const DocumentCanvas: React.FC<DocumentCanvasProps> = ({
                                 style={{
                                     left: `${field.x}%`,
                                     top: `${field.y}%`,
+                                    width: fieldWidth,
+                                    height: fieldHeight,
                                 }}
                                 className={`
-                  absolute w-[184px] h-[52px] rounded-[12px] bg-[#1A1A1A] text-white
-                  flex items-center justify-between px-3 transition-shadow duration-150 select-none shadow-2xl
+                  absolute rounded-[12px] bg-[#1A1A1A] text-white
+                  flex items-center justify-between px-3 select-none touch-none shadow-2xl
                   ${isActive
                                         ? "border-2 border-[#3C70F2] ring-4 ring-[#3C70F2]/20 z-30"
                                         : field.isSigned
                                             ? "bg-emerald-950/90 border border-emerald-500/80 text-white z-10 cursor-pointer"
                                             : "border border-[#373737] hover:border-[#3C70F2] z-20"
                                     }
-                  ${mode === "sender" ? (isDraggingThis ? "cursor-grabbing scale-[1.02]" : "cursor-grab") : "cursor-pointer"}
+                  ${mode === "sender"
+                                        ? isDraggingThis
+                                            ? "cursor-grabbing scale-[1.01]"
+                                            : "cursor-grab"
+                                        : "cursor-pointer"
+                                    }
                 `}
                             >
-                                {/* Delete Button (Isolated from Drag Propagation) */}
+                                {/* Delete Button */}
                                 {mode === "sender" && isActive && onFieldDelete && (
                                     <button
                                         type="button"
-                                        onPointerDown={(e) => {
-                                            e.stopPropagation();
-                                        }}
-                                        onPointerUp={(e) => {
-                                            e.stopPropagation();
-                                        }}
                                         onClick={(e) => {
                                             e.stopPropagation();
                                             e.preventDefault();
                                             onFieldDelete(field.id);
                                         }}
-                                        className="absolute -top-2 -right-2 w-6 h-6 bg-[#F23C3C] text-white rounded-full flex items-center justify-center font-sans text-xs font-bold shadow-lg hover:scale-110 active:scale-95 transition-transform z-40 cursor-pointer"
+                                        className="absolute -top-2 -right-2 w-6 h-6 bg-[#F23C3C] text-white rounded-full flex items-center justify-center font-sans text-xs font-bold shadow-xl hover:scale-110 active:scale-95 transition-transform z-50 cursor-pointer"
                                         title="Delete field"
                                     >
                                         ×
                                     </button>
                                 )}
 
+                                {/* Bottom-Right Corner Resize Grip Handle */}
+                                {mode === "sender" && isActive && (
+                                    <button
+                                        type="button"
+                                        onPointerDown={(e) => handleResizePointerDown(e, field)}
+                                        className={`
+                      absolute -bottom-1.5 -right-1.5 w-4 h-4 bg-[#3C70F2] rounded-full
+                      border-2 border-white shadow-md z-50 cursor-nwse-resize
+                      hover:scale-125 transition-transform
+                      ${isResizingThis ? "scale-125 ring-2 ring-white" : ""}
+                    `}
+                                        title="Drag to resize box"
+                                    />
+                                )}
+
                                 {field.isSigned ? (
-                                    <div className="flex items-center justify-between w-full">
+                                    <div className="flex items-center justify-between w-full h-full">
                                         <span className="font-sans font-medium text-xs text-emerald-400 italic truncate max-w-[120px]">
                                             {field.signatureValue || "Signed"}
                                         </span>
-                                        <div className="w-5 h-5 rounded-full bg-emerald-500 flex items-center justify-center text-white">
+                                        <div className="w-5 h-5 rounded-full bg-emerald-500 flex items-center justify-center text-white shrink-0">
                                             <Image
                                                 src="/icon-tick.svg"
                                                 alt="Signed"
@@ -366,7 +475,7 @@ export const DocumentCanvas: React.FC<DocumentCanvasProps> = ({
                                         </div>
                                     </div>
                                 ) : (
-                                    <div className="flex items-center gap-2.5 w-full">
+                                    <div className="flex items-center gap-2.5 w-full h-full overflow-hidden">
                                         <div
                                             className={`
                         w-7 h-7 rounded-full flex items-center justify-center shrink-0
@@ -384,8 +493,8 @@ export const DocumentCanvas: React.FC<DocumentCanvasProps> = ({
                                             <span className="font-sans font-medium text-[12px] text-white truncate leading-tight">
                                                 {field.label || "Signature"}
                                             </span>
-                                            <span className="font-sans font-light text-[10px] text-white/50">
-                                                {mode === "sender" ? "Drag to adjust" : "Click to sign"}
+                                            <span className="font-sans font-light text-[10px] text-white/50 truncate">
+                                                {mode === "sender" ? "Drag / resize box" : "Click to sign"}
                                             </span>
                                         </div>
                                     </div>
