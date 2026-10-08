@@ -7,8 +7,8 @@ export interface SignatureField {
     page: number;
     x: number; // percentage (0 - 100)
     y: number; // percentage (0 - 100)
-    width?: number; // percentage (0 - 100)
-    height?: number; // percentage (0 - 100)
+    width: number; // percentage (0 - 100)
+    height: number; // percentage (0 - 100)
     label?: string;
     isSigned: boolean;
     signatureValue?: string;
@@ -22,12 +22,12 @@ interface DocumentCanvasProps {
     file?: File | string | null;
     activeFieldIndex?: number | null;
     isPlacingBlock?: boolean;
-    onCanvasClickToPlace?: (xPercent: number, yPercent: number) => void;
     onFieldSelect?: (index: number) => void;
     onFieldsChange?: (fields: SignatureField[]) => void;
     onFieldDelete?: (fieldId: string) => void;
     onSignFieldClick?: (fieldId: string) => void;
     onTotalPagesChange?: (pages: number) => void;
+    onFinishPlacingBlock?: () => void;
 }
 
 export const DocumentCanvas: React.FC<DocumentCanvasProps> = ({
@@ -38,29 +38,38 @@ export const DocumentCanvas: React.FC<DocumentCanvasProps> = ({
     file,
     activeFieldIndex,
     isPlacingBlock = false,
-    onCanvasClickToPlace,
     onFieldSelect,
     onFieldsChange,
     onFieldDelete,
     onSignFieldClick,
     onTotalPagesChange,
+    onFinishPlacingBlock,
 }) => {
     const paperRef = useRef<HTMLDivElement>(null);
     const pdfCanvasRef = useRef<HTMLCanvasElement>(null);
 
-    const [draggingId, setDraggingId] = useState<string | null>(null);
-    const [resizingId, setResizingId] = useState<string | null>(null);
     const [imageUrl, setImageUrl] = useState<string | null>(null);
     const [pdfDoc, setPdfDoc] = useState<pdfjs.PDFDocumentProxy | null>(null);
     const [isLoading, setIsLoading] = useState(false);
 
-    // Synchronous refs for active drag and resize operations
+    /* Marquee Selection Drag State (Snipping Tool style) */
+    const [marquee, setMarquee] = useState<{
+        startX: number;
+        startY: number;
+        currentX: number;
+        currentY: number;
+    } | null>(null);
+
+    /* Drag / Resize State */
+    const [draggingId, setDraggingId] = useState<string | null>(null);
+    const [resizingId, setResizingId] = useState<string | null>(null);
+
     const activeDragRef = useRef<{
         fieldId: string;
         startX: number;
         startY: number;
-        initialFieldX: number;
-        initialFieldY: number;
+        initialX: number;
+        initialY: number;
     } | null>(null);
 
     const activeResizeRef = useRef<{
@@ -71,7 +80,6 @@ export const DocumentCanvas: React.FC<DocumentCanvasProps> = ({
         initialHeight: number;
     } | null>(null);
 
-    // Keep fresh references for window listeners
     const fieldsRef = useRef(fields);
     useEffect(() => {
         fieldsRef.current = fields;
@@ -89,7 +97,7 @@ export const DocumentCanvas: React.FC<DocumentCanvasProps> = ({
         }
     }, []);
 
-    /* Load File Source */
+    /* Load Document */
     useEffect(() => {
         if (!file) {
             setImageUrl(null);
@@ -193,29 +201,21 @@ export const DocumentCanvas: React.FC<DocumentCanvasProps> = ({
         };
     }, [pdfDoc, currentPage]);
 
-    /* Global Window Listeners for Moving & Resizing */
+    /* Global Window Event Listeners for Repositioning & Resizing */
     useEffect(() => {
         const handleWindowPointerMove = (e: PointerEvent) => {
             if (!paperRef.current) return;
             const paperRect = paperRef.current.getBoundingClientRect();
 
-            // Handle Repositioning
+            // Repositioning
             if (activeDragRef.current) {
-                const { fieldId, startX, startY, initialFieldX, initialFieldY } =
-                    activeDragRef.current;
+                const { fieldId, startX, startY, initialX, initialY } = activeDragRef.current;
 
-                const deltaX = e.clientX - startX;
-                const deltaY = e.clientY - startY;
+                const deltaXPercent = ((e.clientX - startX) / paperRect.width) * 100;
+                const deltaYPercent = ((e.clientY - startY) / paperRect.height) * 100;
 
-                const deltaXPercent = (deltaX / paperRect.width) * 100;
-                const deltaYPercent = (deltaY / paperRect.height) * 100;
-
-                let newX = initialFieldX + deltaXPercent;
-                let newY = initialFieldY + deltaYPercent;
-
-                // Bound checking
-                newX = Math.max(0, Math.min(80, newX));
-                newY = Math.max(0, Math.min(92, newY));
+                let newX = Math.max(0, Math.min(85, initialX + deltaXPercent));
+                let newY = Math.max(0, Math.min(92, initialY + deltaYPercent));
 
                 if (onFieldsChangeRef.current) {
                     const updated = fieldsRef.current.map((f) =>
@@ -225,20 +225,15 @@ export const DocumentCanvas: React.FC<DocumentCanvasProps> = ({
                 }
             }
 
-            // Handle Container Resizing
+            // Resizing
             if (activeResizeRef.current) {
-                const { fieldId, startX, startY, initialWidth, initialHeight } =
-                    activeResizeRef.current;
+                const { fieldId, startX, startY, initialWidth, initialHeight } = activeResizeRef.current;
 
-                const deltaX = e.clientX - startX;
-                const deltaY = e.clientY - startY;
+                const deltaWPercent = ((e.clientX - startX) / paperRect.width) * 100;
+                const deltaHPercent = ((e.clientY - startY) / paperRect.height) * 100;
 
-                const deltaWPercent = (deltaX / paperRect.width) * 100;
-                const deltaHPercent = (deltaY / paperRect.height) * 100;
-
-                // Minimum dimensions: 18% width, 5% height
-                let newW = Math.max(18, Math.min(60, initialWidth + deltaWPercent));
-                let newH = Math.max(5, Math.min(30, initialHeight + deltaHPercent));
+                let newW = Math.max(12, Math.min(80, initialWidth + deltaWPercent));
+                let newH = Math.max(4, Math.min(40, initialHeight + deltaHPercent));
 
                 if (onFieldsChangeRef.current) {
                     const updated = fieldsRef.current.map((f) =>
@@ -269,21 +264,69 @@ export const DocumentCanvas: React.FC<DocumentCanvasProps> = ({
         };
     }, []);
 
-    /* Tap-to-Place on Paper Canvas */
-    const handlePaperClick = (e: React.MouseEvent<HTMLDivElement>) => {
-        if (!paperRef.current || !isPlacingBlock || !onCanvasClickToPlace) return;
+    /* Snipping Tool Marquee Drawing Handlers */
+    const handlePaperPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+        if (!isPlacingBlock || !paperRef.current) return;
 
+        e.preventDefault();
         const paperRect = paperRef.current.getBoundingClientRect();
-        const x = ((e.clientX - paperRect.left) / paperRect.width) * 100;
-        const y = ((e.clientY - paperRect.top) / paperRect.height) * 100;
 
-        const clampedX = Math.max(2, Math.min(70, x));
-        const clampedY = Math.max(2, Math.min(90, y));
+        const startX = ((e.clientX - paperRect.left) / paperRect.width) * 100;
+        const startY = ((e.clientY - paperRect.top) / paperRect.height) * 100;
 
-        onCanvasClickToPlace(clampedX, clampedY);
+        setMarquee({ startX, startY, currentX: startX, currentY: startY });
     };
 
-    /* Start Reposition Drag */
+    const handlePaperPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+        if (!marquee || !paperRef.current) return;
+
+        const paperRect = paperRef.current.getBoundingClientRect();
+        const currentX = Math.max(
+            0,
+            Math.min(100, ((e.clientX - paperRect.left) / paperRect.width) * 100)
+        );
+        const currentY = Math.max(
+            0,
+            Math.min(100, ((e.clientY - paperRect.top) / paperRect.height) * 100)
+        );
+
+        setMarquee((prev) => (prev ? { ...prev, currentX, currentY } : null));
+    };
+
+    const handlePaperPointerUp = () => {
+        if (!marquee) return;
+
+        const x = Math.min(marquee.startX, marquee.currentX);
+        const y = Math.min(marquee.startY, marquee.currentY);
+        const width = Math.abs(marquee.currentX - marquee.startX);
+        const height = Math.abs(marquee.currentY - marquee.startY);
+
+        // If click without drag, create default sized box
+        const finalW = width < 3 ? 30 : width;
+        const finalH = height < 2 ? 7 : height;
+
+        const newField: SignatureField = {
+            id: `field-${Date.now()}`,
+            page: currentPage,
+            x,
+            y,
+            width: finalW,
+            height: finalH,
+            label: `Signature ${fields.length + 1}`,
+            isSigned: false,
+        };
+
+        if (onFieldsChange) {
+            const nextFields = [...fields, newField];
+            onFieldsChange(nextFields);
+            if (onFieldSelect) onFieldSelect(nextFields.length - 1);
+        }
+
+        setMarquee(null);
+        if (onFinishPlacingBlock) onFinishPlacingBlock();
+    };
+
+    /* Reposition Drag */
     const handleFieldPointerDown = (
         e: React.PointerEvent<HTMLDivElement>,
         field: SignatureField,
@@ -295,22 +338,20 @@ export const DocumentCanvas: React.FC<DocumentCanvasProps> = ({
         e.preventDefault();
         e.stopPropagation();
 
-        if (onFieldSelect) {
-            onFieldSelect(globalIndex);
-        }
+        if (onFieldSelect) onFieldSelect(globalIndex);
 
         activeDragRef.current = {
             fieldId: field.id,
             startX: e.clientX,
             startY: e.clientY,
-            initialFieldX: field.x,
-            initialFieldY: field.y,
+            initialX: field.x,
+            initialY: field.y,
         };
 
         setDraggingId(field.id);
     };
 
-    /* Start Resize Drag */
+    /* Resize Drag */
     const handleResizePointerDown = (
         e: React.PointerEvent<HTMLButtonElement>,
         field: SignatureField
@@ -324,14 +365,24 @@ export const DocumentCanvas: React.FC<DocumentCanvasProps> = ({
             fieldId: field.id,
             startX: e.clientX,
             startY: e.clientY,
-            initialWidth: field.width || 36, // default ~180px on 500px paper
-            initialHeight: field.height || 7.3, // default ~52px on 707px paper
+            initialWidth: field.width || 30,
+            initialHeight: field.height || 7,
         };
 
         setResizingId(field.id);
     };
 
     const currentPageFields = fields.filter((f) => f.page === currentPage);
+
+    // Computed Snipping Marquee Rectangle
+    const marqueeRect = marquee
+        ? {
+            left: `${Math.min(marquee.startX, marquee.currentX)}%`,
+            top: `${Math.min(marquee.startY, marquee.currentY)}%`,
+            width: `${Math.abs(marquee.currentX - marquee.startX)}%`,
+            height: `${Math.abs(marquee.currentY - marquee.startY)}%`,
+        }
+        : null;
 
     return (
         <div className="relative w-full h-full flex items-center justify-center overflow-auto p-8 select-none [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar]:h-1.5 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-[#373737] [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-[#505050]">
@@ -341,9 +392,11 @@ export const DocumentCanvas: React.FC<DocumentCanvasProps> = ({
             >
                 <div
                     ref={paperRef}
-                    onClick={handlePaperClick}
+                    onPointerDown={handlePaperPointerDown}
+                    onPointerMove={handlePaperPointerMove}
+                    onPointerUp={handlePaperPointerUp}
                     className={`
-            relative w-[500px] h-[707px] bg-white rounded-[4px] shadow-2xl flex flex-col justify-between overflow-hidden
+            relative w-[500px] h-[707px] bg-white rounded-[4px] shadow-2xl flex flex-col justify-between overflow-hidden touch-none
             ${isPlacingBlock ? "cursor-crosshair ring-2 ring-[#3C70F2]" : "cursor-default"}
           `}
                 >
@@ -373,27 +426,28 @@ export const DocumentCanvas: React.FC<DocumentCanvasProps> = ({
                                 <div className="w-full h-2.5 bg-black/5 rounded" />
                                 <div className="w-full h-2.5 bg-black/5 rounded" />
                                 <div className="w-4/5 h-2.5 bg-black/5 rounded" />
-                                <div className="pt-6 space-y-2">
-                                    <div className="w-full h-2 bg-black/5 rounded" />
-                                    <div className="w-full h-2 bg-black/5 rounded" />
-                                    <div className="w-3/4 h-2 bg-black/5 rounded" />
-                                </div>
-                            </div>
-                            <div className="text-center font-sans text-[11px] text-black/30 border-t border-black/5 pt-4">
-                                Page {currentPage}
                             </div>
                         </div>
                     )}
 
-                    {/* OVERLAY SIGNATURE FIELDS */}
+                    {/* Snipping Tool Selection Trace (Marquee) */}
+                    {marqueeRect && (
+                        <div
+                            style={marqueeRect}
+                            className="absolute z-50 border-2 border-dashed border-[#3C70F2] bg-[#3C70F2]/15 pointer-events-none flex items-center justify-center"
+                        >
+                            <span className="font-sans font-medium text-[10px] text-[#3C70F2] bg-white/90 px-1.5 py-0.5 rounded shadow-sm border border-[#3C70F2]/30">
+                                Drag to draw signature area
+                            </span>
+                        </div>
+                    )}
+
+                    {/* OVERLAY SIGNATURE FIELDS (Clean Glass Target aesthetic) */}
                     {currentPageFields.map((field) => {
                         const globalIndex = fields.findIndex((f) => f.id === field.id);
                         const isActive = activeFieldIndex === globalIndex;
                         const isDraggingThis = draggingId === field.id;
                         const isResizingThis = resizingId === field.id;
-
-                        const fieldWidth = field.width ? `${field.width}%` : "184px";
-                        const fieldHeight = field.height ? `${field.height}%` : "52px";
 
                         return (
                             <div
@@ -409,17 +463,17 @@ export const DocumentCanvas: React.FC<DocumentCanvasProps> = ({
                                 style={{
                                     left: `${field.x}%`,
                                     top: `${field.y}%`,
-                                    width: fieldWidth,
-                                    height: fieldHeight,
+                                    width: `${field.width || 30}%`,
+                                    height: `${field.height || 7}%`,
                                 }}
                                 className={`
-                  absolute rounded-[12px] bg-[#1A1A1A] text-white
-                  flex items-center justify-between px-3 select-none touch-none shadow-2xl
-                  ${isActive
-                                        ? "border-2 border-[#3C70F2] ring-4 ring-[#3C70F2]/20 z-30"
-                                        : field.isSigned
-                                            ? "bg-emerald-950/90 border border-emerald-500/80 text-white z-10 cursor-pointer"
-                                            : "border border-[#373737] hover:border-[#3C70F2] z-20"
+                  absolute rounded-[6px] transition-all duration-75 select-none touch-none
+                  flex items-center justify-between px-2.5 border
+                  ${field.isSigned
+                                        ? "bg-emerald-500/10 border-emerald-500 text-emerald-900 z-10 cursor-pointer"
+                                        : isActive
+                                            ? "bg-[#3C70F2]/15 border-2 border-[#3C70F2] ring-2 ring-[#3C70F2]/20 z-30"
+                                            : "bg-[#3C70F2]/5 border-dashed border-[#3C70F2]/60 hover:bg-[#3C70F2]/10 z-20"
                                     }
                   ${mode === "sender"
                                         ? isDraggingThis
@@ -438,63 +492,57 @@ export const DocumentCanvas: React.FC<DocumentCanvasProps> = ({
                                             e.preventDefault();
                                             onFieldDelete(field.id);
                                         }}
-                                        className="absolute -top-2 -right-2 w-6 h-6 bg-[#F23C3C] text-white rounded-full flex items-center justify-center font-sans text-xs font-bold shadow-xl hover:scale-110 active:scale-95 transition-transform z-50 cursor-pointer"
+                                        className="absolute -top-2.5 -right-2.5 w-5 h-5 bg-[#F23C3C] text-white rounded-full flex items-center justify-center font-sans text-xs font-bold shadow-md hover:scale-110 active:scale-95 transition-transform z-50 cursor-pointer"
                                         title="Delete field"
                                     >
                                         ×
                                     </button>
                                 )}
 
-                                {/* Bottom-Right Corner Resize Grip Handle */}
+                                {/* Resize Handle Handle */}
                                 {mode === "sender" && isActive && (
                                     <button
                                         type="button"
                                         onPointerDown={(e) => handleResizePointerDown(e, field)}
                                         className={`
-                      absolute -bottom-1.5 -right-1.5 w-4 h-4 bg-[#3C70F2] rounded-full
-                      border-2 border-white shadow-md z-50 cursor-nwse-resize
-                      hover:scale-125 transition-transform
-                      ${isResizingThis ? "scale-125 ring-2 ring-white" : ""}
+                      absolute -bottom-1.5 -right-1.5 w-3.5 h-3.5 bg-[#3C70F2] rounded-full
+                      border-2 border-white shadow-md z-50 cursor-nwse-resize hover:scale-125 transition-transform
+                      ${isResizingThis ? "scale-125" : ""}
                     `}
-                                        title="Drag to resize box"
+                                        title="Resize field area"
                                     />
                                 )}
 
                                 {field.isSigned ? (
                                     <div className="flex items-center justify-between w-full h-full">
-                                        <span className="font-sans font-medium text-xs text-emerald-400 italic truncate max-w-[120px]">
+                                        <span className="font-serif italic text-sm text-emerald-900 font-semibold truncate">
                                             {field.signatureValue || "Signed"}
                                         </span>
-                                        <div className="w-5 h-5 rounded-full bg-emerald-500 flex items-center justify-center text-white shrink-0">
+                                        <div className="w-4 h-4 rounded-full bg-emerald-600 flex items-center justify-center text-white shrink-0">
                                             <Image
                                                 src="/icon-tick.svg"
                                                 alt="Signed"
-                                                width={12}
-                                                height={12}
+                                                width={10}
+                                                height={10}
                                             />
                                         </div>
                                     </div>
                                 ) : (
-                                    <div className="flex items-center gap-2.5 w-full h-full overflow-hidden">
-                                        <div
-                                            className={`
-                        w-7 h-7 rounded-full flex items-center justify-center shrink-0
-                        ${isActive ? "bg-[#3C70F2] text-white" : "bg-[#282828] text-white/70"}
-                      `}
-                                        >
+                                    <div className="flex items-center gap-2 w-full h-full overflow-hidden">
+                                        <div className="w-5 h-5 rounded-full bg-[#3C70F2]/20 text-[#3C70F2] flex items-center justify-center shrink-0">
                                             <Image
                                                 src="/icon-sig-scrib.svg"
                                                 alt=""
-                                                width={16}
-                                                height={16}
+                                                width={13}
+                                                height={13}
                                             />
                                         </div>
                                         <div className="flex flex-col overflow-hidden">
-                                            <span className="font-sans font-medium text-[12px] text-white truncate leading-tight">
-                                                {field.label || "Signature"}
+                                            <span className="font-sans font-semibold text-[11px] text-[#3C70F2] truncate leading-tight">
+                                                {field.label || "Signature Line"}
                                             </span>
-                                            <span className="font-sans font-light text-[10px] text-white/50 truncate">
-                                                {mode === "sender" ? "Drag / resize box" : "Click to sign"}
+                                            <span className="font-sans font-light text-[9px] text-[#3C70F2]/70 truncate">
+                                                {mode === "sender" ? "Signer placement area" : "Click here to sign"}
                                             </span>
                                         </div>
                                     </div>

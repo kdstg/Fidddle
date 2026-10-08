@@ -218,11 +218,11 @@ export const SenderWorkspace: React.FC<SenderWorkspaceProps> = ({
                             fields={fields}
                             activeFieldIndex={activeFieldIndex}
                             isPlacingBlock={isPlacingBlock}
-                            onCanvasClickToPlace={handleCanvasClickToPlace}
                             onFieldSelect={handleSelectField}
                             onFieldsChange={(updated) => setFields(updated)}
                             onFieldDelete={handleFieldDelete}
                             onTotalPagesChange={(pages) => setTotalPages(pages)}
+                            onFinishPlacingBlock={() => setIsPlacingBlock(false)} // <-- Disarms tool after box creation
                         />
                     </main>
 
@@ -271,15 +271,15 @@ export const SenderWorkspace: React.FC<SenderWorkspaceProps> = ({
                             <button
                                 onClick={handleStartPlacement}
                                 className={`
-                  w-[259px] h-[56px] px-4 py-2
-                  inline-flex items-center justify-center gap-3
-                  rounded-full text-white transition-all duration-150
-                  font-sans font-medium text-[20px] tracking-tight cursor-pointer
-                  ${isPlacingBlock
+    w-[259px] h-[56px] px-4 py-2
+    inline-flex items-center justify-center gap-3
+    rounded-full text-white transition-all duration-150
+    font-sans font-medium text-[20px] tracking-tight cursor-pointer
+    ${isPlacingBlock
                                         ? "bg-[#3C70F2] ring-4 ring-[#3C70F2]/30 scale-[1.02]"
                                         : "glass-button active:scale-[0.98]"
                                     }
-                `}
+  `}
                             >
                                 <Image
                                     src="/icon-sig-scrib.svg"
@@ -287,7 +287,7 @@ export const SenderWorkspace: React.FC<SenderWorkspaceProps> = ({
                                     width={24}
                                     height={24}
                                 />
-                                <span>{isPlacingBlock ? "Click Canvas to Drop" : "Add Signature Block"}</span>
+                                <span>{isPlacingBlock ? "Click & drag to place" : "Add Signature Block"}</span>
                             </button>
 
                             <ConfirmCheckButton onClick={() => onConfirm && onConfirm(fields)} />
