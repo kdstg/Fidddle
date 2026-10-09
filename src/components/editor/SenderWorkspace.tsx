@@ -45,22 +45,6 @@ export const SenderWorkspace: React.FC<SenderWorkspaceProps> = ({
         setIsPlacingBlock(true);
     };
 
-    const handleCanvasClickToPlace = (x: number, y: number) => {
-        const newField: SignatureField = {
-            id: `field-${Date.now()}`,
-            page: currentPage,
-            x,
-            y,
-            label: `Signature ${fields.length + 1}`,
-            isSigned: false,
-        };
-
-        const nextFields = [...fields, newField];
-        setFields(nextFields);
-        setActiveFieldIndex(nextFields.length - 1);
-        setIsPlacingBlock(false); // Disarm placement mode once dropped
-    };
-
     const handleFieldDelete = (fieldId: string) => {
         const filtered = fields.filter((f) => f.id !== fieldId);
         setFields(filtered);
@@ -222,7 +206,7 @@ export const SenderWorkspace: React.FC<SenderWorkspaceProps> = ({
                             onFieldsChange={(updated) => setFields(updated)}
                             onFieldDelete={handleFieldDelete}
                             onTotalPagesChange={(pages) => setTotalPages(pages)}
-                            onFinishPlacingBlock={() => setIsPlacingBlock(false)} // <-- Disarms tool after box creation
+                            onFinishPlacingBlock={() => setIsPlacingBlock(false)}
                         />
                     </main>
 
@@ -271,15 +255,15 @@ export const SenderWorkspace: React.FC<SenderWorkspaceProps> = ({
                             <button
                                 onClick={handleStartPlacement}
                                 className={`
-    w-[259px] h-[56px] px-4 py-2
-    inline-flex items-center justify-center gap-3
-    rounded-full text-white transition-all duration-150
-    font-sans font-medium text-[20px] tracking-tight cursor-pointer
-    ${isPlacingBlock
+                  w-[259px] h-[56px] px-4 py-2
+                  inline-flex items-center justify-center gap-3
+                  rounded-full text-white transition-all duration-150
+                  font-sans font-medium text-[20px] tracking-tight cursor-pointer
+                  ${isPlacingBlock
                                         ? "bg-[#3C70F2] ring-4 ring-[#3C70F2]/30 scale-[1.02]"
                                         : "glass-button active:scale-[0.98]"
                                     }
-  `}
+                `}
                             >
                                 <Image
                                     src="/icon-sig-scrib.svg"
@@ -287,7 +271,9 @@ export const SenderWorkspace: React.FC<SenderWorkspaceProps> = ({
                                     width={24}
                                     height={24}
                                 />
-                                <span>{isPlacingBlock ? "Click & drag to place" : "Add Signature Block"}</span>
+                                <span>
+                                    {isPlacingBlock ? "Click page to place" : "Add Signature Block"}
+                                </span>
                             </button>
 
                             <ConfirmCheckButton onClick={() => onConfirm && onConfirm(fields)} />
