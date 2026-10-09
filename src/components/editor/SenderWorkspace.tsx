@@ -40,7 +40,6 @@ export const SenderWorkspace: React.FC<SenderWorkspaceProps> = ({
     const handleZoomOut = () => setZoomLevel((prev) => Math.max(50, prev - 10));
     const handleZoomIn = () => setZoomLevel((prev) => Math.min(200, prev + 10));
 
-    /* Tap-to-Place Block Handler */
     const handleStartPlacement = () => {
         setIsPlacingBlock(true);
     };
@@ -82,7 +81,6 @@ export const SenderWorkspace: React.FC<SenderWorkspaceProps> = ({
         }
     };
 
-    /* Backdrop Dismiss */
     const handleBackdropPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
         if (e.target === e.currentTarget && onClose) {
             e.stopPropagation();
@@ -102,7 +100,7 @@ export const SenderWorkspace: React.FC<SenderWorkspaceProps> = ({
                 onClick={(e) => e.stopPropagation()}
                 className="relative w-[1214.4px] h-[703px] bg-[#202020] border border-[#373737] rounded-[24px] flex overflow-hidden shadow-2xl cursor-default"
             >
-                {/* Dynamic Thumbnail Sidebar */}
+                {/* Thumbnail Sidebar */}
                 <PageThumbnailSidebar
                     file={file}
                     currentPage={currentPage}
@@ -110,10 +108,10 @@ export const SenderWorkspace: React.FC<SenderWorkspaceProps> = ({
                     onSelectPage={setCurrentPage}
                 />
 
-                {/* Main Content Area */}
-                <div className="flex-1 h-full flex flex-col justify-between px-[40px] py-6 relative">
-                    {/* Header */}
-                    <header className="w-full grid grid-cols-[auto_1fr_auto] items-center gap-4 z-10">
+                {/* Main Content Workspace Area */}
+                <div className="flex-1 h-full flex flex-col justify-between px-[40px] py-6 relative overflow-hidden">
+                    {/* Header Bar */}
+                    <header className="w-full grid grid-cols-[auto_1fr_auto] items-center gap-4 z-10 shrink-0">
                         {/* Zoom Controls */}
                         <div className="flex items-center gap-3 shrink-0">
                             <IconButton
@@ -192,8 +190,8 @@ export const SenderWorkspace: React.FC<SenderWorkspaceProps> = ({
                         </div>
                     </header>
 
-                    {/* Canvas Viewport */}
-                    <main className="relative flex-1 my-2 overflow-hidden">
+                    {/* Canvas Viewport Box */}
+                    <main className="relative flex-1 min-h-0 my-2 overflow-hidden w-full h-full">
                         <DocumentCanvas
                             mode="sender"
                             file={file}
@@ -210,14 +208,14 @@ export const SenderWorkspace: React.FC<SenderWorkspaceProps> = ({
                         />
                     </main>
 
-                    {/* Bottom Toolbar */}
-                    <div className="w-full bg-[#202020] border border-[#373737] rounded-full px-4 py-2 flex items-center justify-between z-10 shadow-lg">
-                        <div className="flex items-center gap-[24px]">
+                    {/* Locked Bottom Toolbar */}
+                    <div className="w-full shrink-0 bg-[#202020] border border-[#373737] rounded-full px-4 py-2 flex items-center justify-between z-20 shadow-lg">
+                        <div className="flex items-center gap-[24px] shrink-0">
                             <span className="font-sans font-normal text-[20px] text-white whitespace-nowrap">
                                 {fields.length} block{fields.length === 1 ? "" : "s"} added
                             </span>
 
-                            <div className="flex items-center gap-[16px]">
+                            <div className="flex items-center gap-[16px] shrink-0">
                                 <IconButton
                                     size="lg"
                                     variant="solid"
@@ -251,11 +249,11 @@ export const SenderWorkspace: React.FC<SenderWorkspaceProps> = ({
                             </div>
                         </div>
 
-                        <div className="flex items-center gap-[16px]">
+                        <div className="flex items-center gap-[16px] shrink-0">
                             <button
                                 onClick={handleStartPlacement}
                                 className={`
-                  w-[259px] h-[56px] px-4 py-2
+                  w-[259px] h-[56px] px-4 py-2 shrink-0
                   inline-flex items-center justify-center gap-3
                   rounded-full text-white transition-all duration-150
                   font-sans font-medium text-[20px] tracking-tight cursor-pointer
@@ -271,12 +269,14 @@ export const SenderWorkspace: React.FC<SenderWorkspaceProps> = ({
                                     width={24}
                                     height={24}
                                 />
-                                <span>
+                                <span className="whitespace-nowrap">
                                     {isPlacingBlock ? "Click page to place" : "Add Signature Block"}
                                 </span>
                             </button>
 
-                            <ConfirmCheckButton onClick={() => onConfirm && onConfirm(fields)} />
+                            <div className="shrink-0">
+                                <ConfirmCheckButton onClick={() => onConfirm && onConfirm(fields)} />
+                            </div>
                         </div>
                     </div>
                 </div>
