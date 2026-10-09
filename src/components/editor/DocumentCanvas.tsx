@@ -513,20 +513,12 @@ export const DocumentCanvas: React.FC<DocumentCanvasProps> = ({
                                     />
                                 )}
 
-                                {field.isSigned ? (
-                                    <div className="flex items-center justify-between w-full h-full">
-                                        <span className="font-serif italic text-sm text-emerald-900 font-semibold truncate">
-                                            {field.signatureValue || "Signed"}
-                                        </span>
-                                        <div className="w-4 h-4 rounded-full bg-emerald-600 flex items-center justify-center text-white shrink-0">
-                                            <Image
-                                                src="/icon-tick.svg"
-                                                alt="Signed"
-                                                width={10}
-                                                height={10}
-                                            />
-                                        </div>
-                                    </div>
+                                {field.isSigned && field.signatureValue ? (
+                                    <img
+                                        src={field.signatureValue}
+                                        alt="Signature"
+                                        className="w-full h-full object-contain p-1 pointer-events-none"
+                                    />
                                 ) : (
                                     <div className="flex items-center gap-2 w-full h-full overflow-hidden">
                                         <div className="w-5 h-5 rounded-full bg-[#3C70F2]/20 text-[#3C70F2] flex items-center justify-center shrink-0">
