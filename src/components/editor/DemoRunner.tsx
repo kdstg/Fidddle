@@ -4,6 +4,7 @@ import Image from "next/image";
 import { SenderWorkspace } from "./SenderWorkspace";
 import { RecipientWorkspace } from "./RecipientWorkspace";
 import { SignatureField } from "./DocumentCanvas";
+import { exportSignedPdf } from "@/utils/pdfExporter";
 
 type DemoStep = "upload" | "sender" | "recipient" | "completed";
 
@@ -189,11 +190,22 @@ export const DemoRunner: React.FC = () => {
                 />
             )}
 
-            {/* Step 3: Completed Screen */}
+            {/* Step 3: Completed Screen with Download Trigger */}
             {step === "completed" && (
-                <div className="relative w-[480px] bg-[#1D1D1D] border border-[#373737] rounded-[24px] p-8 flex flex-col items-center text-center shadow-2xl space-y-6">
+                <div className="relative w-[500px] bg-[#1D1D1D] border border-[#373737] rounded-[24px] p-8 flex flex-col items-center text-center shadow-2xl space-y-6">
                     <div className="w-16 h-16 rounded-full bg-emerald-500/20 border-2 border-emerald-500 flex items-center justify-center">
-                        <Image src="/icon-tick.svg" alt="Success" width={28} height={28} />
+                        <svg
+                            width="28"
+                            height="28"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="#10B981"
+                            strokeWidth="3"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                        >
+                            <polyline points="20 6 9 17 4 12" />
+                        </svg>
                     </div>
 
                     <div className="space-y-2">
@@ -201,20 +213,41 @@ export const DemoRunner: React.FC = () => {
                             Document Fully Executed!
                         </h2>
                         <p className="font-sans font-light text-[14px] text-white/60">
-                            All signature blocks have been captured and saved.
+                            Signatures have been captured and flattened onto the document.
                         </p>
                     </div>
 
-                    <div className="flex items-center gap-3 w-full pt-2">
+                    <button
+                        onClick={() => exportSignedPdf(docFile, placedFields, docName)}
+                        className="w-full h-[52px] bg-[#3C70F2] hover:bg-[#3C70F2]/90 rounded-full text-white font-sans font-medium text-[16px] shadow-[0_6px_20px_rgba(60,112,242,0.4)] transition-all cursor-pointer active:scale-95 flex items-center justify-center gap-2.5"
+                    >
+                        <svg
+                            width="20"
+                            height="20"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2.2"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                        >
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                            <polyline points="7 10 12 15 17 10" />
+                            <line x1="12" y1="15" x2="12" y2="3" />
+                        </svg>
+                        <span>Download Signed PDF</span>
+                    </button>
+
+                    <div className="flex items-center gap-3 w-full pt-1">
                         <button
                             onClick={() => setStep("upload")}
-                            className="flex-1 h-[48px] bg-[#252525] border border-[#373737] hover:bg-[#303030] rounded-full text-white font-sans font-medium text-[15px] transition-all cursor-pointer active:scale-95"
+                            className="flex-1 h-[44px] bg-[#252525] border border-[#373737] hover:bg-[#303030] rounded-full text-white/80 hover:text-white font-sans font-medium text-[14px] transition-all cursor-pointer active:scale-95"
                         >
                             Upload New Doc
                         </button>
                         <button
                             onClick={() => setStep("recipient")}
-                            className="flex-1 h-[48px] bg-[#3C70F2] hover:bg-[#3C70F2]/90 rounded-full text-white font-sans font-medium text-[15px] transition-all cursor-pointer active:scale-95"
+                            className="flex-1 h-[44px] bg-[#252525] border border-[#373737] hover:bg-[#303030] rounded-full text-white/80 hover:text-white font-sans font-medium text-[14px] transition-all cursor-pointer active:scale-95"
                         >
                             Back to Recipient
                         </button>
