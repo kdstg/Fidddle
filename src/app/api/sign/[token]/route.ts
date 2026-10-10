@@ -5,11 +5,12 @@ import { prisma } from "@/lib/prisma";
 /* GET: Fetch document & field layout using recipient token */
 export async function GET(
     req: Request,
-    { params }: { params: { token: string } }
+    { params }: { params: Promise<{ token: string }> | { token: string } }
 ) {
     try {
+        const { token } = await params;
         const recipient = await prisma.recipient.findUnique({
-            where: { token: params.token },
+            where: { token },
             include: {
                 document: {
                     include: {
@@ -46,14 +47,15 @@ export async function GET(
 /* POST: Save captured signatures & mark document as COMPLETED */
 export async function POST(
     req: Request,
-    { params }: { params: { token: string } }
+    { params }: { params: Promise<{ token: string }> | { token: string } }
 ) {
     try {
+        const { token } = await params;
         const body = await req.json();
         const { signedFields, completedFileUrl } = body;
 
         const recipient = await prisma.recipient.findUnique({
-            where: { token: params.token },
+            where: { token },
         });
 
         if (!recipient) {

@@ -1,4 +1,6 @@
-/* src/components/editor/RecipientWorkspace.tsx */
+"use client";
+
+
 import React, { useState, useEffect } from "react";
 import Image from "next/image";
 import { IconButton } from "@/components/ui/IconButton";
