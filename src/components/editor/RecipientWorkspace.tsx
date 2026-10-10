@@ -311,7 +311,11 @@ export const RecipientWorkspace: React.FC<RecipientWorkspaceProps> = ({
 
                             <ConfirmCheckButton
                                 disabled={!isDocumentFullySigned}
-                                onClick={() => onCompleteDocument && onCompleteDocument(fields)}
+                                onClick={() => {
+                                    if (isDocumentFullySigned && onCompleteDocument) {
+                                        onCompleteDocument(fields);
+                                    }
+                                }}
                             />
                         </div>
                     </div>
