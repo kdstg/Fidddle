@@ -1,4 +1,3 @@
-/* src/app/api/documents/route.ts */
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
@@ -7,58 +6,57 @@ export async function POST(req: Request) {
         const body = await req.json();
         const { title, originalFileUrl, recipientName, recipientEmail, fields } = body;
 
-        if (!originalFileUrl || !recipientEmail) {
+        // Validate incoming data
+        if (!title || !recipientEmail || !fields) {
             return NextResponse.json(
-                { error: "Missing required fields (originalFileUrl, recipientEmail)" },
+                { success: false, error: "Missing required fields" },
                 { status: 400 }
             );
         }
 
-        const newDocument = await prisma.document.create({
+        // Create document, recipient token, and signature fields in a transaction
+        const document = await prisma.document.create({
             data: {
-                title: title || "Untitled Document",
-                originalFile: originalFileUrl,
+                title,
+                originalFile: originalFileUrl || "/demo-sample.pdf",
                 status: "PENDING",
                 recipients: {
                     create: {
-                        name: recipientName || "Signer",
+                        name: recipientName || "Recipient",
                         email: recipientEmail,
+                        status: "WAITING",
                     },
+                },
+                fields: {
+                    create: fields.map((f: any) => ({
+                        page: f.page,
+                        x: f.x,
+                        y: f.y,
+                        width: f.width,
+                        height: f.height,
+                        label: f.label || "Signature Line",
+                        isSigned: false,
+                    })),
                 },
             },
             include: {
                 recipients: true,
+                fields: true,
             },
         });
 
-        const recipient = newDocument.recipients[0];
-
-        /* Save signature field placement coordinates */
-        if (fields && Array.isArray(fields)) {
-            await prisma.signatureField.createMany({
-                data: fields.map((f: any) => ({
-                    documentId: newDocument.id,
-                    recipientId: recipient.id,
-                    page: f.page,
-                    x: f.x,
-                    y: f.y,
-                    width: f.width,
-                    height: f.height,
-                    label: f.label || "Signature Line",
-                })),
-            });
-        }
+        const recipient = document.recipients[0];
 
         return NextResponse.json({
             success: true,
-            documentId: newDocument.id,
+            documentId: document.id,
             signingToken: recipient.token,
             signingUrl: `/sign/${recipient.token}`,
         });
-    } catch (error) {
-        console.error("Failed to create document:", error);
+    } catch (error: any) {
+        console.error("Error creating document:", error);
         return NextResponse.json(
-            { error: "Internal Server Error" },
+            { success: false, error: error.message || "Internal Server Error" },
             { status: 500 }
         );
     }

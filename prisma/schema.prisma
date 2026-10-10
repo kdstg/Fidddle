@@ -7,23 +7,12 @@ generator client {
   provider = "prisma-client-js"
 }
 
-enum DocumentStatus {
-  DRAFT
-  PENDING
-  COMPLETED
-}
-
-enum RecipientStatus {
-  WAITING
-  SIGNED
-}
-
 model Document {
   id            String           @id @default(cuid())
   title         String
   originalFile  String           // URL or storage path to original PDF
   completedFile String?          // URL to final flattened signed PDF
-  status        DocumentStatus   @default(DRAFT)
+  status        String           @default("DRAFT") // DRAFT, PENDING, COMPLETED
   createdAt     DateTime         @default(now())
   updatedAt     DateTime         @updatedAt
 
@@ -39,8 +28,8 @@ model Recipient {
   document    Document        @relation(fields: [documentId], references: [id], onDelete: Cascade)
   name        String
   email       String
-  token       String          @unique @default(cuid()) // Unique token for public /sign/[token] route
-  status      RecipientStatus @default(WAITING)
+  token       String          @unique @default(cuid())
+  status      String          @default("WAITING") // WAITING, SIGNED
   signedAt    DateTime?
 
   fields      SignatureField[]
@@ -56,13 +45,13 @@ model SignatureField {
   recipient      Recipient? @relation(fields: [recipientId], references: [id], onDelete: SetNull)
 
   page           Int
-  x              Float      // Percentage relative to page width (0 - 100)
-  y              Float      // Percentage relative to page height (0 - 100)
+  x              Float      // Percentage relative to page width
+  y              Float      // Percentage relative to page height
   width          Float      // Percentage relative to page width
   height         Float      // Percentage relative to page height
   label          String?    @default("Signature Line")
   isSigned       Boolean    @default(false)
-  signatureValue String?    @db.Text // Base64 charcoal PNG string
+  signatureValue String?    // Base64 charcoal PNG string
 
   createdAt      DateTime   @default(now())
   updatedAt      DateTime   @updatedAt
