@@ -209,7 +209,7 @@ export const SenderWorkspace: React.FC<SenderWorkspaceProps> = ({
                     </main>
 
                     {/* Locked Bottom Toolbar */}
-                    <div className="w-full shrink-0 bg-[#202020] border border-[#373737] rounded-full px-4 py-2 flex items-center justify-between z-20 shadow-lg">
+                    <div className="w-full shrink-0 rounded-full px-4 py-2 flex items-center justify-between">
                         <div className="flex items-center gap-[24px] shrink-0">
                             <span className="font-sans font-normal text-[20px] text-white whitespace-nowrap">
                                 {fields.length} block{fields.length === 1 ? "" : "s"} added
