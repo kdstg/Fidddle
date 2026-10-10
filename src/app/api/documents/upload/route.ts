@@ -20,11 +20,14 @@ export async function POST(req: Request) {
 
         await writeFile(path.join(uploadDir, filename), buffer);
 
-        // Match the object structure that app/page.tsx expects:
+        const relativePath = `/uploads/${filename}`;
+
+        // Return BOTH properties so app/page.tsx never encounters undefined
         return NextResponse.json({
             success: true,
+            fileUrl: relativePath,
             document: {
-                originalFile: `/uploads/${filename}`,
+                originalFile: relativePath,
             },
         });
     } catch (error: any) {

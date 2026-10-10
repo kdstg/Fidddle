@@ -23,13 +23,16 @@ export default function Home() {
 
       if (!uploadRes.ok) throw new Error(uploadData.error || "Failed to upload file");
 
+      // Support both property names to prevent any mismatch bugs
+      const fileUrl = uploadData.fileUrl || uploadData.document?.originalFile;
+
       // 2. Save the document and fields with the real permanent file URL
       const docRes = await fetch("/api/documents", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           title: file.name,
-          originalFileUrl: uploadData.fileUrl, // e.g. /uploads/174...-file.pdf
+          originalFileUrl: fileUrl,
           recipientName: "Test Recipient",
           recipientEmail: "test@example.com",
           fields: fields,
