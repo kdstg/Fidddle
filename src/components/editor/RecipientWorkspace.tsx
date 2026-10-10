@@ -252,7 +252,7 @@ export const RecipientWorkspace: React.FC<RecipientWorkspaceProps> = ({
                     </main>
 
                     {/* Bottom Bar Toolbar */}
-                    <div className="w-full bg-[#202020] border border-[#373737] rounded-full px-6 py-2 flex items-center justify-between z-10 shadow-lg">
+                    <div className="w-full rounded-full px-6 py-2 flex items-center justify-between">
                         <div className="flex items-center gap-[24px]">
                             <span className="font-sans font-normal text-[20px] text-white whitespace-nowrap">
                                 {completedBlocks} of {totalBlocks} completed
