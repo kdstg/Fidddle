@@ -3,9 +3,11 @@
 import React, { useState } from "react";
 import { LandingPage } from "@/components/landing/LandingPage";
 import { SenderWorkspace } from "@/components/editor/SenderWorkspace";
+import { SignLinkModal } from "@/components/modals/SignLinkModal";
 
 export default function Home() {
   const [file, setFile] = useState<File | null>(null);
+  const [generatedUrl, setGeneratedUrl] = useState<string | null>(null);
 
   const handleConfirmDocument = async (fields: any[]) => {
     if (!file) return;
@@ -23,7 +25,6 @@ export default function Home() {
 
       if (!uploadRes.ok) throw new Error(uploadData.error || "Failed to upload file");
 
-      // Support both property names to prevent any mismatch bugs
       const fileUrl = uploadData.fileUrl || uploadData.document?.originalFile;
 
       // 2. Save the document and fields with the real permanent file URL
@@ -42,8 +43,8 @@ export default function Home() {
       const docData = await docRes.json();
       if (!docRes.ok) throw new Error(docData.error || "Failed to save document");
 
-      alert(`Success! Real signing link generated:\nlocalhost:3000${docData.signingUrl}`);
-      window.location.href = docData.signingUrl;
+      // Instead of alert, open our custom generated link modal!
+      setGeneratedUrl(docData.signingUrl);
     } catch (err: any) {
       console.error(err);
       alert(`Error: ${err.message}`);
@@ -57,7 +58,7 @@ export default function Home() {
         onLearnMore={() => console.log("Learn More clicked")}
       />
 
-      {file && (
+      {file && !generatedUrl && (
         <SenderWorkspace
           file={file}
           documentName={file.name}
@@ -65,6 +66,16 @@ export default function Home() {
           onConfirm={handleConfirmDocument}
         />
       )}
+
+      {/* Generated Link Modal */}
+      <SignLinkModal
+        isOpen={!!generatedUrl}
+        signingUrl={generatedUrl || ""}
+        onClose={() => {
+          setGeneratedUrl(null);
+          setFile(null);
+        }}
+      />
     </main>
   );
 }
