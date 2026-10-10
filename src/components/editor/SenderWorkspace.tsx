@@ -275,7 +275,14 @@ export const SenderWorkspace: React.FC<SenderWorkspaceProps> = ({
                             </button>
 
                             <div className="shrink-0">
-                                <ConfirmCheckButton onClick={() => onConfirm && onConfirm(fields)} />
+                                <ConfirmCheckButton
+                                    disabled={fields.length === 0}
+                                    onClick={() => {
+                                        if (fields.length > 0 && onConfirm) {
+                                            onConfirm(fields);
+                                        }
+                                    }}
+                                />
                             </div>
                         </div>
                     </div>
