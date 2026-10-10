@@ -180,7 +180,7 @@ export const SenderWorkspace: React.FC<SenderWorkspaceProps> = ({
                                 variant="solid"
                                 icon={
                                     <Image
-                                        src="/icon-share.svg"
+                                        src="/icon-close.svg"
                                         alt="Share"
                                         width={24}
                                         height={24}
