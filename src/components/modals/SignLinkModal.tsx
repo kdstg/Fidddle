@@ -6,16 +6,19 @@ import Image from "next/image";
 interface SignLinkModalProps {
     isOpen: boolean;
     signingUrl: string;
+    documentName?: string;
     onClose: () => void;
 }
 
 export const SignLinkModal: React.FC<SignLinkModalProps> = ({
     isOpen,
     signingUrl,
+    documentName,
     onClose,
 }) => {
     const [copied, setCopied] = useState(false);
     const [email, setEmail] = useState("");
+    const [isSending, setIsSending] = useState(false);
 
     if (!isOpen) return null;
 
@@ -28,17 +31,40 @@ export const SignLinkModal: React.FC<SignLinkModalProps> = ({
             setCopied(true);
             setTimeout(() => {
                 setCopied(false);
-            }, 5000); // Switches back after 5 seconds
+            }, 5000);
         } catch (err) {
             console.error("Failed to copy link", err);
         }
     };
 
-    const handleSendEmail = (e: React.FormEvent) => {
+    const handleSendEmail = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!email) return;
-        alert(`Email dispatch to ${email} will be connected in Step 2! Link: ${fullUrl}`);
-        setEmail("");
+        if (!email || isSending) return;
+
+        setIsSending(true);
+        try {
+            const res = await fetch("/api/documents/send-email", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    email,
+                    signingUrl: fullUrl,
+                    documentName,
+                }),
+            });
+
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || "Failed to send email");
+
+            alert(`Successfully sent signing link to ${email}!`);
+            setEmail("");
+            onClose();
+        } catch (err: any) {
+            console.error(err);
+            alert(`Error: ${err.message}`);
+        } finally {
+            setIsSending(false);
+        }
     };
 
     return (
@@ -102,7 +128,8 @@ export const SignLinkModal: React.FC<SignLinkModalProps> = ({
 
                         <button
                             type="submit"
-                            className="flex items-center justify-center text-white font-sans font-medium text-[16px] cursor-pointer transition-all active:scale-[0.96] shrink-0"
+                            disabled={isSending}
+                            className="flex items-center justify-center text-white font-sans font-medium text-[16px] cursor-pointer transition-all active:scale-[0.96] shrink-0 disabled:opacity-50"
                             style={{
                                 width: "74px",
                                 height: "40px",
@@ -115,7 +142,7 @@ export const SignLinkModal: React.FC<SignLinkModalProps> = ({
                                 backgroundClip: "padding-box, border-box",
                             }}
                         >
-                            Send
+                            {isSending ? "..." : "Send"}
                         </button>
                     </form>
                 </div>
