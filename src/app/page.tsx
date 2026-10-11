@@ -71,6 +71,7 @@ export default function Home() {
       <SignLinkModal
         isOpen={!!generatedUrl}
         signingUrl={generatedUrl || ""}
+        documentName={file?.name}
         onClose={() => {
           setGeneratedUrl(null);
           setFile(null);

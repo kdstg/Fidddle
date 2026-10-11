@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
-import { Resend } from "resend";
+import sgMail from "@sendgrid/mail";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+if (process.env.SENDGRID_API_KEY) {
+    sgMail.setApiKey(process.env.SENDGRID_API_KEY);
+}
 
 export async function POST(req: Request) {
     try {
@@ -14,9 +16,18 @@ export async function POST(req: Request) {
             );
         }
 
-        const { data, error } = await resend.emails.send({
-            from: "KSTribe <onboarding@resend.dev>", // Use onboarding@resend.dev for free testing
-            to: [email],
+        const sender = process.env.SENDGRID_VERIFIED_SENDER;
+
+        if (!sender) {
+            return NextResponse.json(
+                { success: false, error: "SENDGRID_VERIFIED_SENDER is missing in .env.local" },
+                { status: 500 }
+            );
+        }
+
+        const msg = {
+            to: email,
+            from: sender,
             subject: `Action Required: Please sign ${documentName || "your document"}`,
             html: `
                 <div style="font-family: sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; background: #181818; color: #ffffff; border-radius: 16px;">
@@ -33,16 +44,25 @@ export async function POST(req: Request) {
                     <p style="color: #6792FF; word-break: break-all; font-size: 14px;">http://${signingUrl}</p>
                 </div>
             `,
-        });
+        };
 
-        if (error) {
-            console.error("Resend error:", error);
-            return NextResponse.json({ success: false, error: error.message }, { status: 400 });
+        await sgMail.send(msg);
+
+        return NextResponse.json({ success: true });
+    } catch (err: any) {
+        // Detailed logging to terminal console
+        console.error("--- SendGrid Error Details ---");
+        if (err.response) {
+            console.error("Status:", err.response.statusCode);
+            console.error("Body Errors:", JSON.stringify(err.response.body, null, 2));
+        } else {
+            console.error("Error Message:", err.message);
         }
 
-        return NextResponse.json({ success: true, data });
-    } catch (err: any) {
-        console.error("Email API error:", err);
-        return NextResponse.json({ success: false, error: err.message || "Failed to send email" }, { status: 500 });
+        const detailedError = err.response?.body?.errors?.[0]?.message || err.message || "Failed to send email";
+        return NextResponse.json(
+            { success: false, error: detailedError },
+            { status: 500 }
+        );
     }
 }

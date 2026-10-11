@@ -6,19 +6,15 @@ import Image from "next/image";
 interface SignLinkModalProps {
     isOpen: boolean;
     signingUrl: string;
-    documentName?: string;
     onClose: () => void;
 }
 
 export const SignLinkModal: React.FC<SignLinkModalProps> = ({
     isOpen,
     signingUrl,
-    documentName,
     onClose,
 }) => {
     const [copied, setCopied] = useState(false);
-    const [email, setEmail] = useState("");
-    const [isSending, setIsSending] = useState(false);
 
     if (!isOpen) return null;
 
@@ -31,39 +27,9 @@ export const SignLinkModal: React.FC<SignLinkModalProps> = ({
             setCopied(true);
             setTimeout(() => {
                 setCopied(false);
-            }, 5000);
+            }, 4000);
         } catch (err) {
             console.error("Failed to copy link", err);
-        }
-    };
-
-    const handleSendEmail = async (e: React.FormEvent) => {
-        e.preventDefault();
-        if (!email || isSending) return;
-
-        setIsSending(true);
-        try {
-            const res = await fetch("/api/documents/send-email", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    email,
-                    signingUrl: fullUrl,
-                    documentName,
-                }),
-            });
-
-            const data = await res.json();
-            if (!res.ok) throw new Error(data.error || "Failed to send email");
-
-            alert(`Successfully sent signing link to ${email}!`);
-            setEmail("");
-            onClose();
-        } catch (err: any) {
-            console.error(err);
-            alert(`Error: ${err.message}`);
-        } finally {
-            setIsSending(false);
         }
     };
 
@@ -71,20 +37,28 @@ export const SignLinkModal: React.FC<SignLinkModalProps> = ({
         <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-md flex items-center justify-center p-4 select-none">
             <div
                 className="relative bg-[#202020] border border-[#373737] rounded-[24px] shadow-2xl flex flex-col justify-between"
-                style={{ width: "564px", height: "285px", padding: "36px" }}
+                style={{ width: "520px", height: "180px", padding: "32px" }}
             >
-                {/* Header */}
-                <h2 className="font-sans font-medium text-[20px] text-white tracking-tight">
-                    Sign Link Generated
-                </h2>
+                {/* Header with Close */}
+                <div className="flex items-center justify-between">
+                    <h2 className="font-sans font-medium text-[20px] text-white tracking-tight">
+                        Sign Link Generated
+                    </h2>
+                    <button
+                        onClick={onClose}
+                        className="text-[#A1A1A0] hover:text-white transition-colors text-sm cursor-pointer"
+                    >
+                        Done
+                    </button>
+                </div>
 
                 {/* Link Row */}
-                <div className="flex items-center gap-[16px]">
+                <div className="flex items-center gap-[12px]">
                     <div
-                        className="bg-[#202020] border border-[#373737] rounded-[12px] px-[16px] py-[12px] flex items-center overflow-hidden"
-                        style={{ width: "423px", height: "46px", borderWidth: "0.5px" }}
+                        className="bg-[#181818] border border-[#373737] rounded-[12px] px-[16px] py-[12px] flex items-center overflow-hidden flex-1"
+                        style={{ height: "46px", borderWidth: "0.5px" }}
                     >
-                        <span className="font-sans font-normal text-[16px] text-[#A1A1A0] truncate">
+                        <span className="font-sans font-normal text-[15px] text-[#A1A1A0] truncate">
                             {fullUrl}
                         </span>
                     </div>
@@ -92,59 +66,16 @@ export const SignLinkModal: React.FC<SignLinkModalProps> = ({
                     <button
                         type="button"
                         onClick={handleCopy}
-                        disabled={copied}
-                        className="w-[45px] h-[45px] bg-[#202020] border border-[#373737] rounded-[12px] flex items-center justify-center cursor-pointer hover:border-white/40 transition-all shrink-0"
-                        style={{ borderWidth: "0.5px" }}
+                        className="h-[46px] px-[20px] bg-[#3C70F2] hover:bg-[#3261D6] rounded-[12px] flex items-center justify-center gap-2 cursor-pointer transition-all shrink-0 font-medium text-white text-[15px]"
                     >
                         <Image
                             src={copied ? "/icon-copied.svg" : "/icon-copy.svg"}
                             alt={copied ? "Copied" : "Copy Link"}
-                            width={24}
-                            height={24}
-                            className="transition-all duration-300"
+                            width={18}
+                            height={18}
                         />
+                        <span>{copied ? "Copied!" : "Copy Link"}</span>
                     </button>
-                </div>
-
-                {/* Email Section */}
-                <div className="flex flex-col gap-[8px]">
-                    <span className="font-sans font-normal text-[16px] text-white">
-                        Or Send To Email
-                    </span>
-
-                    <form onSubmit={handleSendEmail} className="flex items-center gap-[16px]">
-                        <div
-                            className="bg-[#202020] border border-[#373737] rounded-[12px] px-[16px] py-[12px] flex items-center overflow-hidden"
-                            style={{ width: "423px", height: "46px", borderWidth: "0.5px" }}
-                        >
-                            <input
-                                type="email"
-                                placeholder="Enter Email"
-                                value={email}
-                                onChange={(e) => setEmail(e.target.value)}
-                                className="w-full bg-transparent font-sans font-normal text-[16px] text-white placeholder-[#A1A1A0] focus:outline-none"
-                            />
-                        </div>
-
-                        <button
-                            type="submit"
-                            disabled={isSending}
-                            className="flex items-center justify-center text-white font-sans font-medium text-[16px] cursor-pointer transition-all active:scale-[0.96] shrink-0 disabled:opacity-50"
-                            style={{
-                                width: "74px",
-                                height: "40px",
-                                padding: "8px 16px",
-                                borderRadius: "100px",
-                                background: "linear-gradient(180deg, #3C70F2 0%, #6792FF 50%, #1245C7 100%)",
-                                border: "1.5px solid transparent",
-                                backgroundImage: "linear-gradient(180deg, #3C70F2 0%, #6792FF 50%, #1245C7 100%), linear-gradient(180deg, #376EFB 0%, #1853EC 100%)",
-                                backgroundOrigin: "border-box",
-                                backgroundClip: "padding-box, border-box",
-                            }}
-                        >
-                            {isSending ? "..." : "Send"}
-                        </button>
-                    </form>
                 </div>
             </div>
         </div>
