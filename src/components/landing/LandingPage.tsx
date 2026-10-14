@@ -2,17 +2,27 @@ import React, { useRef, useState } from "react";
 import Image from "next/image";
 import { IconButton } from "@/components/ui/IconButton";
 import { Notification01Icon } from "hugeicons-react";
+import { ActivityPopover } from "@/components/modals/ActivityPopover";
+import { DocumentLog } from "@/types/document";
 
 interface LandingPageProps {
     onFileSelect: (file: File) => void;
     onLearnMore?: () => void;
     onImportUrl?: () => void;
+    documents: DocumentLog[];
+    isActivityOpen: boolean;
+    onToggleActivity: () => void;
+    onSelectDoc: (doc: DocumentLog) => void;
 }
 
 export const LandingPage: React.FC<LandingPageProps> = ({
     onFileSelect,
     onLearnMore,
     onImportUrl,
+    documents,
+    isActivityOpen,
+    onToggleActivity,
+    onSelectDoc,
 }) => {
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [isDragOver, setIsDragOver] = useState(false);
@@ -106,12 +116,21 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                     />
                 </div>
 
-                {/* Bell Button (Solid Surface) */}
-                <IconButton
-                    size="lg"
-                    variant="solid"
-                    icon={<Notification01Icon size={28} className="text-white" />}
-                />
+                {/* Bell Button & Dropdown Container */}
+                <div className="relative">
+                    <IconButton
+                        size="lg"
+                        variant="solid"
+                        icon={<Notification01Icon size={28} className="text-white" />}
+                        onClick={onToggleActivity}
+                    />
+
+                    <ActivityPopover
+                        isOpen={isActivityOpen}
+                        documents={documents}
+                        onSelectDoc={onSelectDoc}
+                    />
+                </div>
             </header>
 
             {/* Center Hero Section */}
@@ -135,7 +154,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                 {/* Action CTAs */}
                 <div className="flex flex-col items-center gap-4">
                     <div className="flex items-center gap-3">
-                        {/* Upload Doc CTA */}
                         <button
                             onClick={() => fileInputRef.current?.click()}
                             className="
@@ -157,7 +175,6 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                             />
                         </button>
 
-                        {/* Glassmorphic Learn More CTA */}
                         <button
                             onClick={onLearnMore}
                             className="

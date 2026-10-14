@@ -1,6 +1,15 @@
 export type FieldType = 'signature' | 'initials' | 'date' | 'text' | 'checkbox';
 
-export type DocumentStatus = 'draft' | 'pending' | 'completed' | 'declined';
+export type DocumentStatus = "draft" | "pending" | "signed" | "revoked";
+
+export interface DocumentLog {
+    id: string;
+    title: string;
+    signingUrl: string;
+    status: DocumentStatus;
+    createdAt: string; // ISO string or formatted string
+    pdfUrl?: string;   // Original or signed PDF URL/Base64
+}
 
 export interface Signer {
     id: string;

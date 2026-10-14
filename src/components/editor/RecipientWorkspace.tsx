@@ -309,14 +309,30 @@ export const RecipientWorkspace: React.FC<RecipientWorkspaceProps> = ({
                                 <span>Sign</span>
                             </button>
 
-                            <ConfirmCheckButton
+                            <button
+                                type="button"
                                 disabled={!isDocumentFullySigned}
-                                onClick={() => {
+                                onClick={async () => {
                                     if (isDocumentFullySigned && onCompleteDocument) {
-                                        onCompleteDocument(fields);
+                                        try {
+                                            await onCompleteDocument(fields);
+                                            alert("Document signed successfully!");
+                                            window.location.reload(); // or redirect
+                                        } catch (err) {
+                                            console.error(err);
+                                            alert("Failed to submit signature.");
+                                        }
                                     }
                                 }}
-                            />
+                                className={`w-[56px] h-[56px] rounded-full flex items-center justify-center transition-all cursor-pointer ${isDocumentFullySigned
+                                        ? "bg-[#3C70F2] hover:bg-[#3261D6] text-white shadow-lg"
+                                        : "bg-[#2A2A2A] text-white/30 cursor-not-allowed"
+                                    }`}
+                            >
+                                <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
+                                    <path d="M5 13L9 17L19 7" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                                </svg>
+                            </button>
                         </div>
                     </div>
                 </div>
