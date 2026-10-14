@@ -116,20 +116,35 @@ export const LandingPage: React.FC<LandingPageProps> = ({
                     />
                 </div>
 
-                {/* Bell Button & Dropdown Container */}
-                <div className="relative">
+                {/* Top Right Controls: List Button & Bell Dropdown Container */}
+                <div className="flex items-center gap-3">
                     <IconButton
                         size="lg"
                         variant="solid"
-                        icon={<Notification01Icon size={28} className="text-white" />}
-                        onClick={onToggleActivity}
+                        onClick={() => {
+                            // Hook up list view trigger here if needed
+                        }}
+                        icon={
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" className="text-white">
+                                <path d="M8 6H21M8 12H21M8 18H21M3 6H3.01M3 12H3.01M3 18H3.01" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                            </svg>
+                        }
                     />
 
-                    <ActivityPopover
-                        isOpen={isActivityOpen}
-                        documents={documents}
-                        onSelectDoc={onSelectDoc}
-                    />
+                    <div className="relative">
+                        <IconButton
+                            size="lg"
+                            variant="solid"
+                            icon={<Notification01Icon size={28} className="text-white" />}
+                            onClick={onToggleActivity}
+                        />
+
+                        <ActivityPopover
+                            isOpen={isActivityOpen}
+                            documents={documents}
+                            onSelectDoc={onSelectDoc}
+                        />
+                    </div>
                 </div>
             </header>
 
