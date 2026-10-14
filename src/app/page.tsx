@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { LandingPage } from "@/components/landing/LandingPage";
 import { SenderWorkspace } from "@/components/editor/SenderWorkspace";
 import { SignLinkModal } from "@/components/modals/SignLinkModal";
@@ -14,6 +14,30 @@ export default function Home() {
   const [documents, setDocuments] = useState<DocumentLog[]>([]);
   const [isActivityOpen, setIsActivityOpen] = useState(false);
   const [selectedDoc, setSelectedDoc] = useState<DocumentLog | null>(null);
+
+  // Fetch documents from database on mount so history persists
+  useEffect(() => {
+    async function fetchDocuments() {
+      try {
+        const res = await fetch("/api/documents");
+        if (res.ok) {
+          const data = await res.json();
+          // Map database documents to DocumentLog format
+          const formattedDocs: DocumentLog[] = (data.documents || []).map((doc: any) => ({
+            id: doc.id,
+            title: doc.title,
+            signingUrl: doc.recipients?.[0]?.token ? `${window.location.origin}/sign/${doc.recipients[0].token}` : "",
+            status: doc.status || "pending",
+            createdAt: new Date(doc.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + " • " + new Date(doc.createdAt).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }),
+          }));
+          setDocuments(formattedDocs);
+        }
+      } catch (err) {
+        console.error("Failed to fetch documents:", err);
+      }
+    }
+    fetchDocuments();
+  }, []);
 
   const handleConfirmDocument = async (fields: any[]) => {
     if (!file) return;
@@ -63,11 +87,16 @@ export default function Home() {
     }
   };
 
-  const handleRevokeDoc = (docId: string) => {
-    setDocuments((prev) =>
-      prev.map((d) => (d.id === docId ? { ...d, status: "revoked" } : d))
-    );
-    setSelectedDoc(null);
+  const handleRevokeDoc = async (docId: string) => {
+    try {
+      // Optional: Call API to update status in backend if desired
+      setDocuments((prev) =>
+        prev.map((d) => (d.id === docId ? { ...d, status: "revoked" } : d))
+      );
+      setSelectedDoc(null);
+    } catch (err) {
+      console.error("Failed to revoke document", err);
+    }
   };
 
   return (

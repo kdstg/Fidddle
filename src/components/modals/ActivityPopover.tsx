@@ -16,27 +16,42 @@ export const ActivityPopover: React.FC<ActivityPopoverProps> = ({
 }) => {
     if (!isOpen) return null;
 
+    // Helper for status styling
+    const getStatusBadge = (status?: string) => {
+        switch (status) {
+            case "signed":
+                return <span className="text-xs px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400">Signed</span>;
+            case "revoked":
+                return <span className="text-xs px-2 py-0.5 rounded-full bg-red-500/20 text-red-400">Revoked</span>;
+            default:
+                return <span className="text-xs px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400">Pending</span>;
+        }
+    };
+
     return (
-        <div className="absolute right-0 top-[52px] z-40 w-[320px] bg-[#202020] border border-[#373737] rounded-[20px] shadow-2xl overflow-hidden p-2 select-none animate-in fade-in slide-in-from-top-2 duration-150">
+        <div className="absolute right-0 top-[52px] z-40 w-[340px] bg-[#202020] border border-[#373737] rounded-[20px] shadow-2xl overflow-hidden p-2 select-none">
             {documents.length === 0 ? (
                 <div className="p-4 text-center text-sm text-[#A1A1A0]">
                     No activity yet
                 </div>
             ) : (
-                <div className="flex flex-col gap-1">
+                <div className="flex flex-col gap-1 max-h-[360px] overflow-y-auto">
                     {documents.map((doc) => (
                         <button
                             key={doc.id}
                             onClick={() => onSelectDoc(doc)}
                             className="w-full flex items-center justify-between p-3 rounded-[12px] hover:bg-[#282828] transition-colors text-left cursor-pointer group"
                         >
-                            <div className="flex flex-col gap-0.5 truncate pr-2">
+                            <div className="flex flex-col gap-1 truncate pr-2">
                                 <span className="font-sans font-medium text-[15px] text-white truncate">
                                     {doc.title}
                                 </span>
-                                <span className="font-sans text-[13px] text-[#A1A1A0]">
-                                    {doc.createdAt}
-                                </span>
+                                <div className="flex items-center gap-2">
+                                    <span className="font-sans text-[12px] text-[#A1A1A0]">
+                                        {doc.createdAt}
+                                    </span>
+                                    {getStatusBadge(doc.status)}
+                                </div>
                             </div>
 
                             <svg

@@ -1,6 +1,28 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
+export async function GET() {
+    try {
+        const documents = await prisma.document.findMany({
+            include: {
+                recipients: true,
+                fields: true,
+            },
+            orderBy: {
+                createdAt: "desc",
+            },
+        });
+
+        return NextResponse.json({ success: true, documents }, { status: 200 });
+    } catch (error: any) {
+        console.error("Error fetching documents:", error);
+        return NextResponse.json(
+            { success: false, error: error.message || "Internal Server Error" },
+            { status: 500 }
+        );
+    }
+}
+
 export async function POST(req: Request) {
     try {
         const body = await req.json();
