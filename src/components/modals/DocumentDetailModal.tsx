@@ -33,11 +33,15 @@ export const DocumentDetailModal: React.FC<DocumentDetailModalProps> = ({
     if (!isOpen || !doc) return null;
 
     const badge = statusBadgeStyles[doc.status] || statusBadgeStyles.draft;
-    const fullSigningUrl = `localhost:3000${doc.signingUrl}`;
+
+    // Ensure clean absolute link without duplication
+    const cleanUrl = doc.signingUrl.startsWith("http")
+        ? doc.signingUrl
+        : `${window.location.origin}${doc.signingUrl.startsWith("/") ? "" : "/"}${doc.signingUrl}`;
 
     const handleCopy = async () => {
         try {
-            await navigator.clipboard.writeText(`http://${fullSigningUrl}`);
+            await navigator.clipboard.writeText(cleanUrl);
             setCopied(true);
             setTimeout(() => setCopied(false), 3000);
         } catch (err) {
@@ -46,23 +50,23 @@ export const DocumentDetailModal: React.FC<DocumentDetailModalProps> = ({
     };
 
     return (
-        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-md flex items-center justify-center p-4 select-none">
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-md flex items-center justify-center p-4 select-none">
             {/* Top Close Button outside modal */}
             <button
                 onClick={onClose}
                 className="absolute top-8 left-8 bg-[#FF3B30] text-white px-5 py-2 rounded-full font-medium text-sm flex items-center gap-1.5 cursor-pointer hover:bg-[#E03126] transition-all shadow-lg"
             >
-                <span>✕</span>
+                <Image src="/icon-close.svg" alt="Close" width={16} height={16} />
                 <span>Close</span>
             </button>
 
-            {/* Modal Card */}
-            <div className="bg-[#1C1C1E] border border-[#2C2C2E] rounded-[28px] w-[640px] p-8 shadow-2xl flex flex-col gap-6 relative">
+            {/* Modal Card adhering to exact dimensions & borders */}
+            <div className="bg-[#1d1d1d] border-[0.5px] border-[#373737] rounded-[28px] w-[1194px] h-[322px] px-[36px] py-[40px] shadow-2xl flex flex-col justify-between relative">
                 {/* Header Row */}
                 <div className="flex items-start justify-between">
-                    <div className="flex flex-col gap-1">
+                    <div className="flex flex-col gap-1.5">
                         <div className="flex items-center gap-3">
-                            <h2 className="font-sans text-[22px] font-medium text-white tracking-tight">
+                            <h2 className="font-sans text-[18px] font-medium text-white tracking-tight">
                                 {doc.title}
                             </h2>
                             <span
@@ -76,9 +80,11 @@ export const DocumentDetailModal: React.FC<DocumentDetailModalProps> = ({
                         </span>
                     </div>
 
+                    {/* Preview Button with precise specs */}
                     <button
                         onClick={() => onPreview(doc)}
-                        className="bg-[#2C2C2E] hover:bg-[#3A3A3C] text-white px-4 py-2 rounded-full text-sm font-medium flex items-center gap-2 transition-all cursor-pointer border border-white/5"
+                        style={{ padding: "8px 16px" }}
+                        className="bg-[#121212] hover:bg-[#1c1c1c] text-white rounded-full text-[16px] font-light flex items-center gap-2 transition-all cursor-pointer border-[0.5px] border-[#373737]"
                     >
                         <Image src="/icon-preview.svg" alt="Preview" width={16} height={16} />
                         <span>Preview</span>
@@ -88,13 +94,13 @@ export const DocumentDetailModal: React.FC<DocumentDetailModalProps> = ({
                 {/* Link Row */}
                 <button
                     onClick={handleCopy}
-                    className="flex items-center gap-2 text-[#8E8E93] hover:text-white text-sm font-sans underline underline-offset-4 cursor-pointer transition-colors w-fit"
+                    className="flex items-center gap-2 text-[#8E8E93] hover:text-white text-sm font-sans underline underline-offset-4 cursor-pointer transition-colors w-fit truncate max-w-full"
                 >
-                    <Image src="/icon-[#8E8E93]" alt="Link" width={14} height={14} className="opacity-70" />
-                    <span>{copied ? "Copied to clipboard!" : fullSigningUrl}</span>
+                    <Image src="/icon-filelink.svg" alt="Link" width={14} height={14} className="opacity-70 shrink-0" />
+                    <span className="truncate">{copied ? "Copied to clipboard!" : cleanUrl}</span>
                 </button>
 
-                <div className="h-[0.5px] bg-[#2C2C2E] w-full" />
+                <div className="h-[0.5px] bg-[#373737] w-full" />
 
                 {/* Bottom Controls */}
                 <div className="flex items-center justify-between">
@@ -115,7 +121,7 @@ export const DocumentDetailModal: React.FC<DocumentDetailModalProps> = ({
                             <span>Download</span>
                         </button>
 
-                        <button className="w-9 h-9 bg-[#2C2C2E] rounded-full flex items-center justify-center text-[#8E8E93] hover:text-white text-sm cursor-pointer transition-colors">
+                        <button className="w-9 h-9 bg-[#2C2C2E] border-[0.5px] border-[#373737] rounded-full flex items-center justify-center text-[#8E8E93] hover:text-white text-sm cursor-pointer transition-colors">
                             ?
                         </button>
                     </div>

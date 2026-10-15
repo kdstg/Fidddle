@@ -35,7 +35,7 @@ export const ActivityPopover: React.FC<ActivityPopoverProps> = ({
                     No activity yet
                 </div>
             ) : (
-                <div className="flex flex-col gap-1 max-h-[360px] overflow-y-auto">
+                <div className="flex flex-col gap-1 max-h-[360px] overflow-y-auto [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:bg-[#373737] [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-[#4a4a4a]">
                     {documents.map((doc) => (
                         <button
                             key={doc.id}
